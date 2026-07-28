@@ -1,0 +1,303 @@
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, Plus, Check, X, RotateCcw, Search } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { format } from 'date-fns';
+import { DataStore, subscribeDataStore } from '../../lib/dataStore';
+
+const MINISTRY_NAME_MAP: Record<string, string> = {
+  health: 'Health',
+  education: 'Education',
+  finance: 'Finance',
+  it: 'IT',
+  career: 'Career',
+  entertainment: 'Entertainment',
+  personal_dev: 'Personal Dev',
+  external_affairs: 'External Affairs',
+};
+
+const RequestsPage: React.FC = () => {
+  const { role, user } = useAuth();
+
+  const userMinistryName = user?.ministry_id ? (MINISTRY_NAME_MAP[user.ministry_id] || user.ministry_id) : null;
+  const isMinistryUser = role === 'ministry' && !!userMinistryName;
+
+  const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'my' | 'sent' | 'received'>('my');
+
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as const,
+    from: userMinistryName || 'Health',
+    to: 'Finance',
+    amount: '',
+  });
+
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    return subscribeDataStore(() => setTick(t => t + 1));
+  }, []);
+
+  // Update default form origin when profile switches
+  useEffect(() => {
+    if (userMinistryName) {
+      setForm(prev => ({ ...prev, from: userMinistryName }));
+    }
+  }, [userMinistryName]);
+
+  const requests = DataStore.getRequests();
+
+  // Filter requests based on user's ministry & active scope filter
+  const filtered = requests.filter(r => {
+    // Text search
+    const matchesSearch = !search ||
+      r.title.toLowerCase().includes(search.toLowerCase()) ||
+      r.id.toLowerCase().includes(search.toLowerCase()) ||
+      r.from.toLowerCase().includes(search.toLowerCase()) ||
+      r.to.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // Strict scoping for ministry users — MUST belong to active ministry
+    if (isMinistryUser) {
+      const belongsToMinistry = r.from === userMinistryName || r.to === userMinistryName;
+      if (!belongsToMinistry) return false;
+
+      if (scopeFilter === 'sent') {
+        return r.from === userMinistryName;
+      }
+      if (scopeFilter === 'received') {
+        return r.to === userMinistryName;
+      }
+      // 'my' -> both sent or received by this ministry
+      return true;
+    }
+
+    return true;
+  });
+
+  const submitRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title) return;
+    DataStore.addRequest({
+      title: form.title,
+      description: form.description,
+      from: form.from,
+      to: form.to,
+      amount: Number(form.amount) || 0,
+      priority: form.priority,
+    });
+    setForm({
+      title: '',
+      description: '',
+      priority: 'medium',
+      from: userMinistryName || 'Health',
+      to: 'Finance',
+      amount: '',
+    });
+    setShowForm(false);
+  };
+
+  const handleStatusChange = (id: string, status: 'approved' | 'rejected' | 'returned') => {
+    DataStore.updateRequestStatus(id, status);
+  };
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="page-title">
+            <div className="icon"><MessageSquare size={20} color="var(--accent-secondary)" /></div>
+            <div>
+              <h1>Ministry Requests</h1>
+              <p>
+                {isMinistryUser
+                  ? `Inter-ministry resource & service requests for ${userMinistryName} Ministry`
+                  : 'All inter-ministry resource and service requests'}
+              </p>
+            </div>
+          </div>
+          {role !== 'public' && (
+            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+              <Plus size={16} /> New Request
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Request Form */}
+      {showForm && (
+        <div className="card" style={{ marginBottom: 'var(--space-8)' }}>
+          <div className="card-header">
+            <div className="card-title">Create Inter-Ministry Request</div>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowForm(false)}><X size={14} /></button>
+          </div>
+          <form onSubmit={submitRequest}>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Request Title <span className="required">*</span></label>
+                <input className="form-input" placeholder="Enter request title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Origin Ministry</label>
+                <select
+                  className="form-select"
+                  value={form.from}
+                  onChange={e => setForm({ ...form, from: e.target.value })}
+                  disabled={isMinistryUser}
+                >
+                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Target Ministry <span className="required">*</span></label>
+                <select className="form-select" value={form.to} onChange={e => setForm({ ...form, to: e.target.value })}>
+                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Priority <span className="required">*</span></label>
+                <select className="form-select" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as any })}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Amount (₡)</label>
+                <input className="form-input" type="number" placeholder="0 if no budget needed" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description <span className="required">*</span></label>
+              <textarea className="form-textarea" placeholder="Describe the request in detail..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Submit Request</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Requests Table */}
+      <div className="table-container">
+        <div className="table-toolbar">
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="table-search" style={{ flex: 1, minWidth: 240 }}>
+              <Search size={15} color="var(--text-muted)" />
+              <input placeholder="Search requests by title, ID, or ministry..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+
+            {/* Scope filter controls — strictly scoped to active ministry */}
+            {isMinistryUser ? (
+              <div className="filter-group">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${scopeFilter === 'my' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setScopeFilter('my')}
+                >
+                  {userMinistryName} Requests
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${scopeFilter === 'sent' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setScopeFilter('sent')}
+                >
+                  Sent
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${scopeFilter === 'received' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setScopeFilter('received')}
+                >
+                  Received
+                </button>
+              </div>
+            ) : (
+              <div className="badge badge-submitted">{filtered.length} requests</div>
+            )}
+          </div>
+
+          <div className="badge badge-submitted" style={{ alignSelf: 'center' }}>
+            {filtered.length} requests
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Title</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Priority</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id}>
+                  <td><span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>{r.id}</span></td>
+                  <td className="text-strong" style={{ maxWidth: 180 }}>
+                    <span className="truncate" style={{ display: 'block' }}>{r.title}</span>
+                  </td>
+                  <td style={{ fontSize: '0.8rem', color: r.from === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.from === userMinistryName ? 700 : 400 }}>
+                    {r.from}
+                  </td>
+                  <td style={{ fontSize: '0.8rem', color: r.to === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.to === userMinistryName ? 700 : 400 }}>
+                    {r.to}
+                  </td>
+                  <td><span className={`badge badge-${r.priority}`}>{r.priority}</span></td>
+                  <td style={{ fontSize: '0.82rem' }}>{r.amount > 0 ? `₡${r.amount.toLocaleString()}` : '—'}</td>
+                  <td><span className={`badge badge-${r.status === 'approved' ? 'passed' : r.status === 'rejected' ? 'rejected' : r.status === 'returned' ? 'suspended' : 'submitted'}`}>{r.status}</span></td>
+                  <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {r.created_at ? format(new Date(r.created_at), 'MMM dd') : 'Recent'}
+                  </td>
+                  <td>
+                    {role !== 'public' && (
+                      <div className="table-actions">
+                        <button className="btn btn-ghost btn-icon btn-sm" title="Approve" onClick={() => handleStatusChange(r.id, 'approved')} style={{ color: 'var(--status-passed)' }}><Check size={14} /></button>
+                        <button className="btn btn-ghost btn-icon btn-sm" title="Reject" onClick={() => handleStatusChange(r.id, 'rejected')} style={{ color: 'var(--status-rejected)' }}><X size={14} /></button>
+                        <button className="btn btn-ghost btn-icon btn-sm" title="Return" onClick={() => handleStatusChange(r.id, 'returned')} style={{ color: 'var(--status-suspended)' }}><RotateCcw size={14} /></button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="empty-state" style={{ padding: 'var(--space-8)' }}>
+                      <MessageSquare size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+                      <h3>No requests found</h3>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        {isMinistryUser
+                          ? `No requests found for ${userMinistryName} Ministry in this view.`
+                          : 'No requests match your current filters.'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RequestsPage;

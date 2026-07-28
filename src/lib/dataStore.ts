@@ -139,7 +139,9 @@ export const DataStore = {
     }
 
     // Async sync to Supabase if connected
-    supabase.from('bills').update({ status }).eq('id', billId).then(() => {}).catch(() => {});
+    try {
+      (supabase.from('bills') as any).update({ status }).eq('id', billId);
+    } catch { /* ignore */ }
   },
 
   addBill: (bill: Omit<BillItem, 'id' | 'created_at'>) => {

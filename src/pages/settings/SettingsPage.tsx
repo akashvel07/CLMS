@@ -109,7 +109,7 @@ const SettingsPage: React.FC = () => {
               { label: 'App Version', value: 'CLMS v1.0.0' },
               { label: 'Backend', value: 'Supabase (PostgreSQL)' },
               { label: 'Auth', value: 'Supabase Auth' },
-              { label: 'User ID', value: user?.id?.slice(0, 16) + '...' ?? '—' },
+              { label: 'User ID', value: user?.id ? (user.id.slice(0, 16) + '...') : '—' },
               { label: 'Ministry', value: user?.ministry_id ?? 'N/A' },
             ].map(f => (
               <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>

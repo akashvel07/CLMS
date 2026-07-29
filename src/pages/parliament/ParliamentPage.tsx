@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Vote, CheckCircle, XCircle, MinusCircle, FileText, Building2, AlertCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useBills, useVotes } from '../../hooks/useSupabaseData';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
-import { DataStore, subscribeDataStore, type BillItem } from '../../lib/dataStore';
+import { DataStore, type BillItem } from '../../lib/dataStore';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -62,14 +63,9 @@ const STATUS_CONFIG: Record<string, { label: string; badge: string; color: strin
 const ParliamentPage: React.FC = () => {
   const { role, user } = useAuth();
   const ministryCode = user.ministry_id ?? undefined;
-  const [, setTick] = useState(0);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
 
-  useEffect(() => {
-    return subscribeDataStore(() => setTick(t => t + 1));
-  }, []);
-
-  const allBills = DataStore.getBills();
+  const { bills: allBills, loading: billsLoading } = useBills();
 
   // Filter bills visible to this user
   const visibleBills = allBills.filter(b => isBillVisibleToUser(b, role, ministryCode));
@@ -87,7 +83,7 @@ const ParliamentPage: React.FC = () => {
     sortedBills.find(b => b.status === 'voting' || b.status === 'awaiting_president' || b.status === 'submitted') ??
     sortedBills[0];
 
-  const allVotes = DataStore.getVotes();
+  const { votes: allVotes } = useVotes(activeBill?.id);
   const billVotes = activeBill ? allVotes.filter(v => v.bill_id === activeBill.id) : [];
 
   const approveCount = billVotes.filter(v => v.vote === 'approve').length;
@@ -107,9 +103,9 @@ const ParliamentPage: React.FC = () => {
     activeBill?.status === 'voting' &&
     (role === 'president' || role === 'ministry');
 
-  const handleCastVote = (choice: 'approve' | 'reject' | 'abstain') => {
+  const handleCastVote = async (choice: 'approve' | 'reject' | 'abstain') => {
     if (!activeBill || !canVote) return;
-    DataStore.castVote(activeBill.id, user.name, role as any, choice);
+    await DataStore.castVote(activeBill.id, user.name, role as any, choice);
   };
 
   const pieData = [
@@ -412,7 +408,7 @@ const ParliamentPage: React.FC = () => {
                     : 'This bill is currently suspended or under review.'}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Created by <strong>{activeBill.created_by}</strong> · {activeBill.ministry} Ministry · {activeBill.bill_number}
+                  Created by <strong>{activeBill.created_by_name}</strong> · {activeBill.ministry} Ministry · {activeBill.bill_number}
                 </div>
               </div>
             </div>

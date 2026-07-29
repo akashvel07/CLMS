@@ -107,7 +107,7 @@ export function useBudgets() {
 
   useEffect(() => {
     fetchBudgets();
-    const unsub = DataStore.subscribe(fetchBudgets);
+    const unsub = subscribeDataStore(fetchBudgets);
     return unsub;
   }, []);
 

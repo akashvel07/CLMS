@@ -8,6 +8,7 @@ import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ConstitutionPage from './pages/constitution/ConstitutionPage';
 import BillsPage from './pages/bills/BillsPage';
+import NewBillPage from './pages/bills/NewBillPage';
 import ParliamentPage from './pages/parliament/ParliamentPage';
 import PresidentPage from './pages/president/PresidentPage';
 import RequestsPage from './pages/requests/RequestsPage';
@@ -38,6 +39,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/constitution" element={<ConstitutionPage />} />
             <Route path="/bills" element={<BillsPage />} />
+            <Route path="/bills/new" element={<NewBillPage />} />
             <Route path="/parliament" element={<ParliamentPage />} />
             <Route path="/president" element={<PresidentPage />} />
             <Route path="/requests" element={<RequestsPage />} />

@@ -1,5 +1,13 @@
+/**
+ * CLMS Supabase Data Store
+ * All data reads/writes go to Supabase — no localStorage, no seed data.
+ * Realtime subscriptions ensure live sync across all devices.
+ */
 import { supabase } from './supabase';
+const db = supabase as any;
 import type { BillStatus, Role } from '../types/database';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface BillItem {
   id: string;
@@ -7,15 +15,16 @@ export interface BillItem {
   title: string;
   description: string;
   status: BillStatus;
-  ministry: string;
-  created_by: string;
+  ministry: string;       // human label e.g. "Health"
+  ministry_code: string;  // e.g. "health"
+  created_by_name: string;
   created_at: string;
 }
 
 export interface RequestItem {
   id: string;
-  from: string;
-  to: string;
+  from: string;   // from_ministry_name
+  to: string;     // to_ministry_name
   title: string;
   description: string;
   amount: number;
@@ -27,8 +36,8 @@ export interface RequestItem {
 export interface VoteItem {
   id: string;
   bill_id: string;
-  user_name: string;
-  role: Role;
+  user_name: string;   // voted_by_name
+  role: Role;          // voted_by_role
   vote: 'approve' | 'reject' | 'abstain';
   timestamp: string;
 }
@@ -39,193 +48,318 @@ export interface LawItem {
   bill_id: string;
   title: string;
   ministry: string;
+  ministry_code: string;
   status: 'active' | 'suspended' | 'repealed';
   approved_at: string;
-  approved_by: string;
+  approved_by: string;  // approved_by_name
 }
 
-// Initial seed data stored in localStorage if database table is empty
-const SEED_BILLS: BillItem[] = [
-  { id: 'b1', bill_number: 'HB-2024-015', title: 'Universal Healthcare Access Act', status: 'awaiting_president', ministry: 'Health', created_by: 'Dr. Sarah Chen', created_at: '2024-07-01', description: 'Ensures every citizen has access to basic healthcare services.' },
-  { id: 'b2', bill_number: 'ED-2024-009', title: 'Open Source Education Bill', status: 'voting', ministry: 'Education', created_by: 'Prof. James Liu', created_at: '2024-07-05', description: 'Makes all educational resources open-source and freely accessible.' },
-  { id: 'b3', bill_number: 'IT-2024-003', title: 'Digital Identity Framework Bill', status: 'draft', ministry: 'IT', created_by: 'Dir. Maya Singh', created_at: '2024-07-10', description: 'Establishes a secure digital identity system for all citizens.' },
-  { id: 'b4', bill_number: 'FN-2024-007', title: 'Green Energy Investment Act', status: 'approved', ministry: 'Finance', created_by: 'Min. Robert Fox', created_at: '2024-06-20', description: 'Allocates budget for renewable energy infrastructure.' },
-  { id: 'b5', bill_number: 'CD-2024-004', title: 'Job Skills Certification Reform', status: 'passed', ministry: 'Career', created_by: 'Min. Alex Park', created_at: '2024-06-15', description: 'Standardizes job skill certifications across all sectors.' },
-  { id: 'b6', bill_number: 'HB-2024-011', title: 'Pandemic Preparedness Act', status: 'suspended', ministry: 'Health', created_by: 'Dr. Sarah Chen', created_at: '2024-06-01', description: 'Creates protocols for responding to future pandemics.' },
-  { id: 'b7', bill_number: 'EN-2024-002', title: 'Public Entertainment Standards Act', status: 'rejected', ministry: 'Entertainment', created_by: 'Dir. Kim Reeves', created_at: '2024-05-28', description: 'Sets quality standards for public entertainment venues.' },
-  { id: 'b8', bill_number: 'EA-2024-003', title: 'Ministry Collaboration Charter', status: 'enacted', ministry: 'External Affairs', created_by: 'Amb. Lisa Torres', created_at: '2024-05-10', description: 'Formalizes inter-ministry collaboration procedures.' },
-];
+// ─── Listener System (for legacy subscribeDataStore compatibility) ────────────
 
-const SEED_REQUESTS: RequestItem[] = [
-  { id: 'REQ-2024-001', from: 'Health', to: 'Finance', title: 'Emergency Medical Equipment Budget', priority: 'critical', amount: 250000, status: 'pending', created_at: '2024-07-10', description: 'Procurement of ICU beds and oxygen generators.' },
-  { id: 'REQ-2024-002', from: 'IT', to: 'Finance', title: 'Infrastructure Upgrade Fund', priority: 'high', amount: 120000, status: 'approved', created_at: '2024-07-08', description: 'Cloud server expansion for government digital portal.' },
-  { id: 'REQ-2024-003', from: 'Education', to: 'IT', title: 'Learning Management System Software', priority: 'medium', amount: 45000, status: 'approved', created_at: '2024-07-05', description: 'License renewals for national school portals.' },
-  { id: 'REQ-2024-004', from: 'Career', to: 'External Affairs', title: 'Job Fair Partnership Request', priority: 'low', amount: 0, status: 'returned', created_at: '2024-07-03', description: 'International career exchange coordination.' },
-  { id: 'REQ-2024-005', from: 'Personal Dev', to: 'Finance', title: 'Wellness Program Personnel', priority: 'medium', amount: 80000, status: 'pending', created_at: '2024-07-01', description: 'Hiring wellness counselors for community centers.' },
-];
-
-const SEED_LAWS: LawItem[] = [
-  { id: 'l1', law_number: 'LAW-2024-001', bill_id: 'b8', title: 'Ministry Collaboration Charter', ministry: 'External Affairs', status: 'active', approved_at: '2024-05-15', approved_by: 'President Alexander' },
-  { id: 'l2', law_number: 'LAW-2024-002', bill_id: 'b4', title: 'Green Energy Investment Act', ministry: 'Finance', status: 'active', approved_at: '2024-06-25', approved_by: 'President Alexander' },
-  { id: 'l3', law_number: 'LAW-2024-003', bill_id: 'b5', title: 'Job Skills Certification Reform', ministry: 'Career', status: 'active', approved_at: '2024-06-18', approved_by: 'President Alexander' },
-];
-
-const SEED_VOTES: VoteItem[] = [
-  { id: 'v1', bill_id: 'b2', user_name: 'Dr. Sarah Chen', role: 'ministry', vote: 'approve', timestamp: '2024-07-06T10:00:00Z' },
-  { id: 'v2', bill_id: 'b2', user_name: 'Min. Robert Fox', role: 'ministry', vote: 'approve', timestamp: '2024-07-06T10:15:00Z' },
-  { id: 'v3', bill_id: 'b2', user_name: 'Dir. Maya Singh', role: 'ministry', vote: 'reject', timestamp: '2024-07-06T11:30:00Z' },
-];
-
-const STORAGE_KEYS = {
-  BILLS: 'clms_db_bills',
-  REQUESTS: 'clms_db_requests',
-  LAWS: 'clms_db_laws',
-  VOTES: 'clms_db_votes',
-};
-
-// Helper listeners for instant cross-component updates
 type Listener = () => void;
 const listeners: Set<Listener> = new Set();
 
-export const subscribeDataStore = (listener: Listener) => {
+export const subscribeDataStore = (listener: Listener): (() => void) => {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 };
 
-const notifyListeners = () => {
-  listeners.forEach(l => l());
+const notifyListeners = () => listeners.forEach(l => l());
+
+// ─── Supabase Realtime Setup ─────────────────────────────────────────────────
+
+let realtimeChannel: ReturnType<typeof db.channel> | null = null;
+
+export const initRealtimeSync = () => {
+  if (realtimeChannel) return;
+
+  realtimeChannel = db
+    .channel('clms_realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'laws' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'parliament_votes' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, notifyListeners)
+    .subscribe();
 };
 
-// ─── LOCAL STORAGE HELPERS ───────────────────────────────────────────────────
-const getStored = <T>(key: string, seed: T): T => {
-  try {
-    const data = localStorage.getItem(key);
-    if (!data) {
-      localStorage.setItem(key, JSON.stringify(seed));
-      return seed;
-    }
-    return JSON.parse(data);
-  } catch {
-    return seed;
-  }
+// ─── MINISTRY LABEL MAP ─────────────────────────────────────────────────────
+
+export const MINISTRY_CODE_TO_LABEL: Record<string, string> = {
+  health: 'Health',
+  education: 'Education',
+  finance: 'Finance',
+  career: 'Career Development',
+  it: 'Information Technology',
+  personal_dev: 'Personal Development',
+  entertainment: 'Entertainment',
+  external_affairs: 'External Affairs',
 };
 
-const setStored = <T>(key: string, val: T) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-    notifyListeners();
-  } catch { /* ignore */ }
+export const MINISTRY_LABEL_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(MINISTRY_CODE_TO_LABEL).map(([k, v]) => [v.toLowerCase(), k])
+);
+
+// ─── Bill Number Generator ───────────────────────────────────────────────────
+
+const MINISTRY_PREFIX: Record<string, string> = {
+  health: 'HB',
+  education: 'ED',
+  finance: 'FN',
+  career: 'CD',
+  it: 'IT',
+  personal_dev: 'PD',
+  entertainment: 'EN',
+  external_affairs: 'EA',
 };
 
-// ─── DATA STORE API ─────────────────────────────────────────────────────────
+async function generateBillNumber(ministryCode: string): Promise<string> {
+  const prefix = MINISTRY_PREFIX[ministryCode] ?? 'GB';
+  const year = new Date().getFullYear();
+  const { count } = await db
+    .from('bills')
+    .select('*', { count: 'exact', head: true })
+    .eq('ministry_code', ministryCode);
+  const seq = String((count ?? 0) + 1).padStart(3, '0');
+  return `${prefix}-${year}-${seq}`;
+}
+
+async function generateLawNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const { count } = await db
+    .from('laws')
+    .select('*', { count: 'exact', head: true });
+  const seq = String((count ?? 0) + 1).padStart(3, '0');
+  return `LAW-${year}-${seq}`;
+}
+
+// ─── Row → Domain Type Mappers ───────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToBill = (row: any): BillItem => ({
+  id: row.id,
+  bill_number: row.bill_number,
+  title: row.title,
+  description: row.description ?? '',
+  status: row.status as BillStatus,
+  ministry: MINISTRY_CODE_TO_LABEL[row.ministry_code] ?? row.ministry_code,
+  ministry_code: row.ministry_code,
+  created_by_name: row.created_by_name ?? '',
+  created_at: row.created_at,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToRequest = (row: any): RequestItem => ({
+  id: row.id,
+  from: row.from_ministry_name,
+  to: row.to_ministry_name,
+  title: row.title,
+  description: row.description ?? '',
+  amount: Number(row.amount) || 0,
+  status: row.status as RequestItem['status'],
+  priority: row.priority as RequestItem['priority'],
+  created_at: row.created_at,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToVote = (row: any): VoteItem => ({
+  id: row.id,
+  bill_id: row.bill_id,
+  user_name: row.voted_by_name,
+  role: row.voted_by_role as Role,
+  vote: row.vote as VoteItem['vote'],
+  timestamp: row.timestamp,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToLaw = (row: any): LawItem => ({
+  id: row.id,
+  law_number: row.law_number,
+  bill_id: row.bill_id,
+  title: row.title,
+  ministry: MINISTRY_CODE_TO_LABEL[row.ministry_code] ?? row.ministry_code,
+  ministry_code: row.ministry_code,
+  status: row.status as LawItem['status'],
+  approved_at: row.approved_at,
+  approved_by: row.approved_by_name ?? 'President',
+});
+
+// ─── DATA STORE API ──────────────────────────────────────────────────────────
 
 export const DataStore = {
-  // --- BILLS ---
-  getBills: (): BillItem[] => {
-    return getStored<BillItem[]>(STORAGE_KEYS.BILLS, SEED_BILLS);
+
+  // ─── BILLS ────────────────────────────────────────────────────────────────
+
+  getBills: async (): Promise<BillItem[]> => {
+    const { data, error } = await db
+      .from('bills')
+      .select('*')
+      .not('status', 'in', '("deleted","archived")')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getBills error:', error); return []; }
+    return (data ?? []).map(rowToBill);
   },
 
-  updateBillStatus: (billId: string, status: BillStatus) => {
-    const bills = DataStore.getBills();
-    const updated = bills.map(b => (b.id === billId || b.bill_number === billId) ? { ...b, status } : b);
-    setStored(STORAGE_KEYS.BILLS, updated);
+  addBill: async (bill: {
+    title: string;
+    description: string;
+    ministry_code: string;
+    created_by_name: string;
+  }): Promise<BillItem | null> => {
+    const bill_number = await generateBillNumber(bill.ministry_code);
+    const { data, error } = await db
+      .from('bills')
+      .insert({
+        bill_number,
+        title: bill.title,
+        description: bill.description,
+        ministry_code: bill.ministry_code,
+        created_by_name: bill.created_by_name,
+        status: 'draft',
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] addBill error:', error); return null; }
+    notifyListeners();
+    return rowToBill(data);
+  },
 
-    // If approved or enacted, ensure law exists
+  updateBillStatus: async (billId: string, status: BillStatus): Promise<void> => {
+    const { error } = await db
+      .from('bills')
+      .update({ status })
+      .eq('id', billId);
+    if (error) { console.error('[DataStore] updateBillStatus error:', error); return; }
+
+    // If approved → also create a law
     if (status === 'approved' || status === 'enacted') {
-      const bill = updated.find(b => b.id === billId || b.bill_number === billId);
+      const { data: bill } = await db
+        .from('bills')
+        .select('*')
+        .eq('id', billId)
+        .single();
       if (bill) {
-        DataStore.addLawFromBill(bill);
+        await DataStore.addLawFromBill(rowToBill(bill));
       }
     }
-
-    // Async sync to Supabase if connected
-    try {
-      (supabase.from('bills') as any).update({ status }).eq('id', billId);
-    } catch { /* ignore */ }
+    notifyListeners();
   },
 
-  addBill: (bill: Omit<BillItem, 'id' | 'created_at'>) => {
-    const bills = DataStore.getBills();
-    const newBill: BillItem = {
-      ...bill,
-      id: 'b_' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-    const updated = [newBill, ...bills];
-    setStored(STORAGE_KEYS.BILLS, updated);
-    return newBill;
+  // ─── LAWS ─────────────────────────────────────────────────────────────────
+
+  getLaws: async (): Promise<LawItem[]> => {
+    const { data, error } = await db
+      .from('laws')
+      .select('*')
+      .order('approved_at', { ascending: false });
+    if (error) { console.error('[DataStore] getLaws error:', error); return []; }
+    return (data ?? []).map(rowToLaw);
   },
 
-  // --- LAWS / CONSTITUTION ---
-  getLaws: (): LawItem[] => {
-    return getStored<LawItem[]>(STORAGE_KEYS.LAWS, SEED_LAWS);
+  updateLawStatus: async (lawId: string, status: 'active' | 'suspended' | 'repealed'): Promise<void> => {
+    const { error } = await db.from('laws').update({ status }).eq('id', lawId);
+    if (error) console.error('[DataStore] updateLawStatus error:', error);
+    notifyListeners();
   },
 
-  updateLawStatus: (lawId: string, status: 'active' | 'suspended' | 'repealed') => {
-    const laws = DataStore.getLaws();
-    const updated = laws.map(l => (l.id === lawId || l.law_number === lawId) ? { ...l, status } : l);
-    setStored(STORAGE_KEYS.LAWS, updated);
+  addLawFromBill: async (bill: BillItem): Promise<void> => {
+    // Check no duplicate
+    const { count } = await db
+      .from('laws')
+      .select('*', { count: 'exact', head: true })
+      .eq('bill_id', bill.id);
+    if ((count ?? 0) > 0) return;
+
+    const law_number = await generateLawNumber();
+    const { error } = await db.from('laws').insert({
+      law_number,
+      bill_id: bill.id,
+      title: bill.title,
+      ministry_code: bill.ministry_code,
+      status: 'active',
+      approved_by_name: 'President Alexander',
+    });
+    if (error) console.error('[DataStore] addLawFromBill error:', error);
+    notifyListeners();
   },
 
-  addLawFromBill: (bill: BillItem) => {
-    const laws = DataStore.getLaws();
-    const existing = laws.find(l => l.bill_id === bill.id || l.title === bill.title);
-    if (!existing) {
-      const newLaw: LawItem = {
-        id: 'l_' + Date.now(),
-        law_number: 'LAW-2024-0' + (laws.length + 10),
-        bill_id: bill.id,
-        title: bill.title,
-        ministry: bill.ministry,
-        status: 'active',
-        approved_at: new Date().toISOString(),
-        approved_by: 'President Alexander',
-      };
-      setStored(STORAGE_KEYS.LAWS, [newLaw, ...laws]);
-    }
+  // ─── REQUESTS ─────────────────────────────────────────────────────────────
+
+  getRequests: async (): Promise<RequestItem[]> => {
+    const { data, error } = await db
+      .from('requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getRequests error:', error); return []; }
+    return (data ?? []).map(rowToRequest);
   },
 
-  // --- REQUESTS ---
-  getRequests: (): RequestItem[] => {
-    return getStored<RequestItem[]>(STORAGE_KEYS.REQUESTS, SEED_REQUESTS);
+  addRequest: async (req: {
+    title: string;
+    description: string;
+    from: string;
+    to: string;
+    amount: number;
+    priority: 'low' | 'medium' | 'high' | 'critical';
+  }): Promise<RequestItem | null> => {
+    const { data, error } = await db
+      .from('requests')
+      .insert({
+        from_ministry_name: req.from,
+        to_ministry_name: req.to,
+        title: req.title,
+        description: req.description,
+        amount: req.amount,
+        priority: req.priority,
+        status: 'pending',
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] addRequest error:', error); return null; }
+    notifyListeners();
+    return rowToRequest(data);
   },
 
-  updateRequestStatus: (requestId: string, status: 'pending' | 'approved' | 'rejected' | 'returned') => {
-    const reqs = DataStore.getRequests();
-    const updated = reqs.map(r => r.id === requestId ? { ...r, status } : r);
-    setStored(STORAGE_KEYS.REQUESTS, updated);
+  updateRequestStatus: async (
+    requestId: string,
+    status: 'pending' | 'approved' | 'rejected' | 'returned'
+  ): Promise<void> => {
+    const { error } = await db
+      .from('requests')
+      .update({ status })
+      .eq('id', requestId);
+    if (error) console.error('[DataStore] updateRequestStatus error:', error);
+    notifyListeners();
   },
 
-  addRequest: (req: Omit<RequestItem, 'id' | 'created_at' | 'status'>) => {
-    const reqs = DataStore.getRequests();
-    const newReq: RequestItem = {
-      ...req,
-      id: 'REQ-2024-0' + (reqs.length + 10),
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    };
-    const updated = [newReq, ...reqs];
-    setStored(STORAGE_KEYS.REQUESTS, updated);
-    return newReq;
+  // ─── VOTES ────────────────────────────────────────────────────────────────
+
+  getVotes: async (billId?: string): Promise<VoteItem[]> => {
+    let query = db.from('parliament_votes').select('*').order('timestamp', { ascending: false });
+    if (billId) query = query.eq('bill_id', billId);
+    const { data, error } = await query;
+    if (error) { console.error('[DataStore] getVotes error:', error); return []; }
+    return (data ?? []).map(rowToVote);
   },
 
-  // --- VOTES ---
-  getVotes: (): VoteItem[] => {
-    return getStored<VoteItem[]>(STORAGE_KEYS.VOTES, SEED_VOTES);
-  },
-
-  castVote: (billId: string, userName: string, role: Role, vote: 'approve' | 'reject' | 'abstain') => {
-    const votes = DataStore.getVotes();
-    // remove existing vote by user on this bill
-    const filtered = votes.filter(v => !(v.bill_id === billId && v.user_name === userName));
-    const newVote: VoteItem = {
-      id: 'v_' + Date.now(),
-      bill_id: billId,
-      user_name: userName,
-      role,
-      vote,
-      timestamp: new Date().toISOString(),
-    };
-    setStored(STORAGE_KEYS.VOTES, [newVote, ...filtered]);
+  castVote: async (
+    billId: string,
+    userName: string,
+    role: Role,
+    vote: 'approve' | 'reject' | 'abstain'
+  ): Promise<void> => {
+    const { error } = await db
+      .from('parliament_votes')
+      .upsert(
+        {
+          bill_id: billId,
+          voted_by_name: userName,
+          voted_by_role: role,
+          vote,
+          timestamp: new Date().toISOString(),
+        },
+        { onConflict: 'bill_id,voted_by_name' }
+      );
+    if (error) console.error('[DataStore] castVote error:', error);
+    notifyListeners();
   },
 };

@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, BookOpen, Eye, Clock, Trash2, RotateCcw, PauseCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { DataStore, subscribeDataStore } from '../../lib/dataStore';
+import { useLaws } from '../../hooks/useSupabaseData';
 import { useAuth } from '../../contexts/AuthContext';
+import { DataStore } from '../../lib/dataStore';
 
 const ConstitutionPage: React.FC = () => {
   const { role } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [ministryFilter, setMinistryFilter] = useState('all');
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    return subscribeDataStore(() => setTick(t => t + 1));
-  }, []);
-
-  const laws = DataStore.getLaws();
+  const { laws, loading } = useLaws();
 
   const filtered = laws.filter(l => {
     const matchSearch = !search ||
@@ -28,8 +23,8 @@ const ConstitutionPage: React.FC = () => {
 
   const ministries = [...new Set(laws.map(l => l.ministry))];
 
-  const handleStatusUpdate = (lawId: string, newStatus: 'active' | 'suspended' | 'repealed') => {
-    DataStore.updateLawStatus(lawId, newStatus);
+  const handleStatusUpdate = async (lawId: string, newStatus: 'active' | 'suspended' | 'repealed') => {
+    await DataStore.updateLawStatus(lawId, newStatus);
   };
 
   const exportCSV = () => {
@@ -103,46 +98,13 @@ const ConstitutionPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(law => (
-                <tr key={law.id}>
-                  <td><span className="law-number">{law.law_number}</span></td>
-                  <td className="text-strong" style={{ maxWidth: 220 }}>
-                    <span className="truncate" style={{ display: 'block' }}>{law.title}</span>
-                  </td>
-                  <td>
-                    <MinistryTag name={law.ministry} />
-                  </td>
-                  <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {law.approved_at ? format(new Date(law.approved_at), 'MMM dd, yyyy') : 'Recent'}
-                  </td>
-                  <td>
-                    <span className="badge badge-passed" style={{ fontSize: '0.68rem' }}>✓ {law.approved_by}</span>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${law.status === 'active' ? 'enacted' : law.status === 'suspended' ? 'suspended' : 'rejected'}`}>{law.status}</span>
-                  </td>
-                  <td>
-                    {role !== 'public' && (
-                      <div className="table-actions">
-                        {law.status === 'active' && (
-                          <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'suspended')} title="Suspend Law" style={{ color: 'var(--status-suspended)' }}>
-                            <PauseCircle size={14} />
-                          </button>
-                        )}
-                        {law.status === 'suspended' && (
-                          <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'active')} title="Restore Law" style={{ color: 'var(--status-passed)' }}>
-                            <RotateCcw size={14} />
-                          </button>
-                        )}
-                        <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'repealed')} title="Repeal Law" style={{ color: 'var(--status-rejected)' }}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
+                    Loading constitution table from database...
                   </td>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
                     <div className="empty-state">
@@ -152,6 +114,46 @@ const ConstitutionPage: React.FC = () => {
                     </div>
                   </td>
                 </tr>
+              ) : (
+                filtered.map(law => (
+                  <tr key={law.id}>
+                    <td><span className="law-number">{law.law_number}</span></td>
+                    <td className="text-strong" style={{ maxWidth: 220 }}>
+                      <span className="truncate" style={{ display: 'block' }}>{law.title}</span>
+                    </td>
+                    <td>
+                      <MinistryTag name={law.ministry} />
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {law.approved_at ? format(new Date(law.approved_at), 'MMM dd, yyyy') : 'Recent'}
+                    </td>
+                    <td>
+                      <span className="badge badge-passed" style={{ fontSize: '0.68rem' }}>✓ {law.approved_by}</span>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${law.status === 'active' ? 'enacted' : law.status === 'suspended' ? 'suspended' : 'rejected'}`}>{law.status}</span>
+                    </td>
+                    <td>
+                      {role !== 'public' && (
+                        <div className="table-actions">
+                          {law.status === 'active' && (
+                            <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'suspended')} title="Suspend Law" style={{ color: 'var(--status-suspended)' }}>
+                              <PauseCircle size={14} />
+                            </button>
+                          )}
+                          {law.status === 'suspended' && (
+                            <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'active')} title="Restore Law" style={{ color: 'var(--status-passed)' }}>
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                          <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'repealed')} title="Repeal Law" style={{ color: 'var(--status-rejected)' }}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Plus, Check, X, RotateCcw, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
-import { DataStore, subscribeDataStore } from '../../lib/dataStore';
+import { useRequests } from '../../hooks/useSupabaseData';
+import { DataStore } from '../../lib/dataStore';
 
 const MINISTRY_NAME_MAP: Record<string, string> = {
   health: 'Health',
@@ -24,6 +25,8 @@ const RequestsPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<'my' | 'sent' | 'received'>('my');
+  const { requests, loading } = useRequests();
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [form, setForm] = useState({
     title: '',
@@ -34,20 +37,12 @@ const RequestsPage: React.FC = () => {
     amount: '',
   });
 
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    return subscribeDataStore(() => setTick(t => t + 1));
-  }, []);
-
   // Update default form origin when profile switches
   useEffect(() => {
     if (userMinistryName) {
       setForm(prev => ({ ...prev, from: userMinistryName }));
     }
   }, [userMinistryName]);
-
-  const requests = DataStore.getRequests();
 
   // Filter requests based on user's ministry & active scope filter
   const filtered = requests.filter(r => {
@@ -78,10 +73,11 @@ const RequestsPage: React.FC = () => {
     return true;
   });
 
-  const submitRequest = (e: React.FormEvent) => {
+  const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title) return;
-    DataStore.addRequest({
+    if (!form.title || actionLoading) return;
+    setActionLoading(true);
+    await DataStore.addRequest({
       title: form.title,
       description: form.description,
       from: form.from,
@@ -98,10 +94,14 @@ const RequestsPage: React.FC = () => {
       amount: '',
     });
     setShowForm(false);
+    setActionLoading(false);
   };
 
-  const handleStatusChange = (id: string, status: 'approved' | 'rejected' | 'returned') => {
-    DataStore.updateRequestStatus(id, status);
+  const handleStatusChange = async (id: string, status: 'approved' | 'rejected' | 'returned') => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    await DataStore.updateRequestStatus(id, status);
+    setActionLoading(false);
   };
 
   return (
@@ -247,37 +247,13 @@ const RequestsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => (
-                <tr key={r.id}>
-                  <td><span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>{r.id}</span></td>
-                  <td className="text-strong" style={{ maxWidth: 180 }}>
-                    <span className="truncate" style={{ display: 'block' }}>{r.title}</span>
-                  </td>
-                  <td style={{ fontSize: '0.8rem', color: r.from === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.from === userMinistryName ? 700 : 400 }}>
-                    {r.from}
-                  </td>
-                  <td style={{ fontSize: '0.8rem', color: r.to === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.to === userMinistryName ? 700 : 400 }}>
-                    {r.to}
-                  </td>
-                  <td><span className={`badge badge-${r.priority}`}>{r.priority}</span></td>
-                  <td style={{ fontSize: '0.82rem' }}>{r.amount > 0 ? `₡${r.amount.toLocaleString()}` : '—'}</td>
-                  <td><span className={`badge badge-${r.status === 'approved' ? 'passed' : r.status === 'rejected' ? 'rejected' : r.status === 'returned' ? 'suspended' : 'submitted'}`}>{r.status}</span></td>
-                  <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {r.created_at ? format(new Date(r.created_at), 'MMM dd') : 'Recent'}
-                  </td>
-                  <td>
-                    {role !== 'public' && (
-                      <div className="table-actions">
-                        <button className="btn btn-ghost btn-icon btn-sm" title="Approve" onClick={() => handleStatusChange(r.id, 'approved')} style={{ color: 'var(--status-passed)' }}><Check size={14} /></button>
-                        <button className="btn btn-ghost btn-icon btn-sm" title="Reject" onClick={() => handleStatusChange(r.id, 'rejected')} style={{ color: 'var(--status-rejected)' }}><X size={14} /></button>
-                        <button className="btn btn-ghost btn-icon btn-sm" title="Return" onClick={() => handleStatusChange(r.id, 'returned')} style={{ color: 'var(--status-suspended)' }}><RotateCcw size={14} /></button>
-                      </div>
-                    )}
+              {loading ? (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
+                    Loading requests from database...
                   </td>
                 </tr>
-              ))}
-
-              {filtered.length === 0 && (
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
                     <div className="empty-state" style={{ padding: 'var(--space-8)' }}>
@@ -291,6 +267,36 @@ const RequestsPage: React.FC = () => {
                     </div>
                   </td>
                 </tr>
+              ) : (
+                filtered.map(r => (
+                  <tr key={r.id}>
+                    <td><span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>{r.id}</span></td>
+                    <td className="text-strong" style={{ maxWidth: 180 }}>
+                      <span className="truncate" style={{ display: 'block' }}>{r.title}</span>
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: r.from === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.from === userMinistryName ? 700 : 400 }}>
+                      {r.from}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: r.to === userMinistryName ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: r.to === userMinistryName ? 700 : 400 }}>
+                      {r.to}
+                    </td>
+                    <td><span className={`badge badge-${r.priority}`}>{r.priority}</span></td>
+                    <td style={{ fontSize: '0.82rem' }}>{r.amount > 0 ? `₡${r.amount.toLocaleString()}` : '—'}</td>
+                    <td><span className={`badge badge-${r.status === 'approved' ? 'passed' : r.status === 'rejected' ? 'rejected' : r.status === 'returned' ? 'suspended' : 'submitted'}`}>{r.status}</span></td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {r.created_at ? format(new Date(r.created_at), 'MMM dd') : 'Recent'}
+                    </td>
+                    <td>
+                      {role !== 'public' && (
+                        <div className="table-actions">
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Approve" onClick={() => handleStatusChange(r.id, 'approved')} style={{ color: 'var(--status-passed)' }} disabled={actionLoading}><Check size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Reject" onClick={() => handleStatusChange(r.id, 'rejected')} style={{ color: 'var(--status-rejected)' }} disabled={actionLoading}><X size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Return" onClick={() => handleStatusChange(r.id, 'returned')} style={{ color: 'var(--status-suspended)' }} disabled={actionLoading}><RotateCcw size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

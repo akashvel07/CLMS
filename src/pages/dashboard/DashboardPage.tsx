@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   FileText, BookOpen, Vote, Building2, MessageSquare, TrendingUp,
@@ -8,7 +8,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { DataStore, subscribeDataStore } from '../../lib/dataStore';
+
+import { useBills, useRequests, useLaws, useVotes } from '../../hooks/useSupabaseData';
 
 const BILL_TREND = [
   { month: 'Jan', bills: 4 }, { month: 'Feb', bills: 7 }, { month: 'Mar', bills: 5 },
@@ -18,16 +19,10 @@ const BILL_TREND = [
 
 const DashboardPage: React.FC = () => {
   const { user, role } = useAuth();
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    return subscribeDataStore(() => setTick(t => t + 1));
-  }, []);
-
-  const bills = DataStore.getBills();
-  const laws = DataStore.getLaws();
-  const requests = DataStore.getRequests();
-  const votes = DataStore.getVotes();
+  const { bills } = useBills();
+  const { laws } = useLaws();
+  const { requests } = useRequests();
+  const { votes } = useVotes();
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -42,16 +37,16 @@ const DashboardPage: React.FC = () => {
   const pendingReqCount = requests.filter(r => r.status === 'pending').length;
 
   const pieData = [
-    { name: 'Enacted', value: enactedCount || 3, color: 'hsl(152,70%,45%)' },
-    { name: 'Voting', value: bills.filter(b => b.status === 'voting').length || 2, color: 'hsl(265,80%,65%)' },
-    { name: 'Suspended', value: suspendedCount || 1, color: 'hsl(35,95%,55%)' },
-    { name: 'Rejected', value: bills.filter(b => b.status === 'rejected').length || 1, color: 'hsl(0,72%,55%)' },
+    { name: 'Enacted', value: enactedCount, color: 'hsl(152,70%,45%)' },
+    { name: 'Voting', value: bills.filter(b => b.status === 'voting').length, color: 'hsl(265,80%,65%)' },
+    { name: 'Suspended', value: suspendedCount, color: 'hsl(35,95%,55%)' },
+    { name: 'Rejected', value: bills.filter(b => b.status === 'rejected').length, color: 'hsl(0,72%,55%)' },
   ];
 
   const stats = [
-    { label: 'Active Laws', value: `${laws.filter(l => l.status === 'active').length}`, icon: BookOpen, color: 'var(--accent-primary)', glow: 'var(--accent-primary-glow)', trend: '+3 this month', up: true },
-    { label: 'Open Bills', value: `${openBillsCount}`, icon: FileText, color: 'var(--accent-secondary)', glow: 'var(--accent-secondary-glow)', trend: '+2 this week', up: true },
-    { label: 'Parliament Votes', value: `${votes.length + 120}`, icon: Vote, color: 'var(--ministry-finance)', glow: 'var(--ministry-finance-glow)', trend: 'All time', up: true },
+    { label: 'Active Laws', value: `${laws.filter(l => l.status === 'active').length}`, icon: BookOpen, color: 'var(--accent-primary)', glow: 'var(--accent-primary-glow)', trend: 'Active framework', up: true },
+    { label: 'Open Bills', value: `${openBillsCount}`, icon: FileText, color: 'var(--accent-secondary)', glow: 'var(--accent-secondary-glow)', trend: 'Under review', up: true },
+    { label: 'Parliament Votes', value: `${votes.length}`, icon: Vote, color: 'var(--ministry-finance)', glow: 'var(--ministry-finance-glow)', trend: 'All cast votes', up: true },
     { label: 'Pending Requests', value: `${pendingReqCount}`, icon: MessageSquare, color: 'var(--ministry-career)', glow: 'var(--ministry-career-glow)', trend: `${pendingReqCount} active`, up: false },
     { label: 'Ministries', value: '8', icon: Building2, color: 'var(--ministry-it)', glow: 'var(--ministry-it-glow)', trend: 'All active', up: true },
     { label: 'Suspended Bills', value: `${suspendedCount}`, icon: AlertTriangle, color: 'var(--status-suspended)', glow: 'hsla(35,95%,55%,0.25)', trend: 'Needs review', up: false },
@@ -152,30 +147,39 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', height: 220 }}>
-            <div className="chart-container" style={{ flex: 1, height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }}
-                    formatter={(val: number, name: string) => [`${val} bills`, name]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingLeft: 'var(--space-4)' }}>
-              {pieData.map(d => (
-                <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: '0.78rem' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                  <span style={{ color: 'var(--text-muted)' }}>{d.name}</span>
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-primary)', fontWeight: 600 }}>{d.value}</span>
+            {bills.length === 0 ? (
+              <div style={{ flex: 1, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Activity size={24} style={{ opacity: 0.4 }} />
+                No bill data available
+              </div>
+            ) : (
+              <>
+                <div className="chart-container" style={{ flex: 1, height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }}
+                        formatter={(val: number, name: string) => [`${val} bills`, name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', paddingLeft: 'var(--space-4)' }}>
+                  {pieData.map(d => (
+                    <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: '0.78rem' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                      <span style={{ color: 'var(--text-muted)' }}>{d.name}</span>
+                      <span style={{ marginLeft: 'auto', color: 'var(--text-primary)', fontWeight: 600 }}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

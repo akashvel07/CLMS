@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Crown, CheckCircle, XCircle, PauseCircle, Flag, Bell, TrendingUp, TrendingDown, FileText, MessageSquare, AlertTriangle, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
-import { DataStore, subscribeDataStore } from '../../lib/dataStore';
+import { useBills, useRequests, useLaws } from '../../hooks/useSupabaseData';
+import { DataStore } from '../../lib/dataStore';
 
 const STATUS_LABEL: Record<string, string> = {
   exceptional: 'Exceptional', very_good: 'Very Good', good: 'Good',
@@ -18,15 +19,9 @@ const PERFORMANCE_DATA = [
 
 const PresidentPage: React.FC = () => {
   const { user } = useAuth();
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    return subscribeDataStore(() => setTick(t => t + 1));
-  }, []);
-
-  const bills = DataStore.getBills();
-  const requests = DataStore.getRequests();
-  const laws = DataStore.getLaws();
+  const { bills } = useBills();
+  const { requests } = useRequests();
+  const { laws } = useLaws();
 
   // Filter pending approvals (Bills awaiting president + Pending Requests)
   const pendingBills = bills.filter(b => b.status === 'awaiting_president' || b.status === 'suspended' || b.status === 'voting');
@@ -52,28 +47,28 @@ const PresidentPage: React.FC = () => {
     { name: 'External Affairs', code: 'external_affairs', status: 'good', score: 76, budget: '₡1.3M', trend: 'up', requests: requests.filter(r => r.from === 'External Affairs').length, bills: bills.filter(b => b.ministry === 'External Affairs').length, alerts: 1, color: 'var(--ministry-external)' },
   ];
 
-  const handleApproveBill = (id: string) => {
-    DataStore.updateBillStatus(id, 'approved');
+  const handleApproveBill = async (id: string) => {
+    await DataStore.updateBillStatus(id, 'approved');
   };
 
-  const handleRejectBill = (id: string) => {
-    DataStore.updateBillStatus(id, 'rejected');
+  const handleRejectBill = async (id: string) => {
+    await DataStore.updateBillStatus(id, 'rejected');
   };
 
-  const handleSuspendBill = (id: string) => {
-    DataStore.updateBillStatus(id, 'suspended');
+  const handleSuspendBill = async (id: string) => {
+    await DataStore.updateBillStatus(id, 'suspended');
   };
 
-  const handleApproveRequest = (id: string) => {
-    DataStore.updateRequestStatus(id, 'approved');
+  const handleApproveRequest = async (id: string) => {
+    await DataStore.updateRequestStatus(id, 'approved');
   };
 
-  const handleRejectRequest = (id: string) => {
-    DataStore.updateRequestStatus(id, 'rejected');
+  const handleRejectRequest = async (id: string) => {
+    await DataStore.updateRequestStatus(id, 'rejected');
   };
 
-  const handleReturnRequest = (id: string) => {
-    DataStore.updateRequestStatus(id, 'returned');
+  const handleReturnRequest = async (id: string) => {
+    await DataStore.updateRequestStatus(id, 'returned');
   };
 
   return (

@@ -1,41 +1,65 @@
-import React from 'react';
-import { Globe2, Eye } from 'lucide-react';
+import { Globe2, Eye, BookOpen } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useBills, useRequests, useLaws } from '../../hooks/useSupabaseData';
+import { format } from 'date-fns';
 
-const MINISTRIES = [
-  { name: 'Health', status: 'very_good', bills: 3, budget: '₡2.4M', requests: 2 },
-  { name: 'Education', status: 'good', bills: 2, budget: '₡1.8M', requests: 1 },
-  { name: 'Finance', status: 'exceptional', bills: 1, budget: '₡5.2M', requests: 0 },
-  { name: 'Career', status: 'well', bills: 1, budget: '₡1.1M', requests: 3 },
-  { name: 'IT', status: 'good', bills: 2, budget: '₡1.6M', requests: 1 },
-  { name: 'Personal Dev', status: 'underperforming', bills: 0, budget: '₡0.6M', requests: 2 },
-  { name: 'Entertainment', status: 'well', bills: 1, budget: '₡0.9M', requests: 0 },
-  { name: 'External Affairs', status: 'good', bills: 2, budget: '₡1.3M', requests: 4 },
-];
-
-const BUDGET_PIE = [
-  { name: 'Finance', value: 5.2, color: 'var(--ministry-finance)' },
-  { name: 'Health', value: 2.4, color: 'var(--ministry-health)' },
-  { name: 'Education', value: 1.8, color: 'var(--ministry-education)' },
-  { name: 'IT', value: 1.6, color: 'var(--ministry-it)' },
-  { name: 'Others', value: 3.9, color: 'var(--text-muted)' },
-];
-
-const BILLS_DATA = [
-  { name: 'Health', bills: 7 }, { name: 'Education', bills: 5 }, { name: 'Finance', bills: 4 },
-  { name: 'IT', bills: 4 }, { name: 'Career', bills: 3 }, { name: 'External', bills: 3 },
-  { name: 'Entertainment', bills: 2 }, { name: 'Personal', bills: 1 },
-];
-
-const STATUS_LABEL: Record<string, string> = {
-  exceptional: 'Exceptional', very_good: 'Very Good', good: 'Good',
-  well: 'Well', underperforming: 'Underperforming', poor: 'Poor',
+const MINISTRY_LABELS: Record<string, string> = {
+  health: 'Health',
+  education: 'Education',
+  finance: 'Finance',
+  it: 'IT',
+  career: 'Career',
+  entertainment: 'Entertainment',
+  personal_dev: 'Personal Dev',
+  external_affairs: 'External Affairs',
 };
 
 const PublicDashboard: React.FC = () => {
+  const { bills } = useBills();
+  const { requests } = useRequests();
+  const { laws } = useLaws();
+
+  // Compute active bills by ministry
+  const ministriesStatusList = Object.entries(MINISTRY_LABELS).map(([code, label]) => {
+    const minBills = bills.filter(b => b.ministry_code === code);
+    const minRequests = requests.filter(r => r.from === label || r.to === label);
+    
+    // Status can just show 'good' or default
+    return {
+      name: label,
+      status: 'good',
+      bills: minBills.filter(b => b.status !== 'draft').length,
+      budget: code === 'finance' ? '₡5.2M' : code === 'health' ? '₡2.4M' : code === 'education' ? '₡1.8M' : '₡1.0M',
+      requests: minRequests.filter(r => r.status === 'pending').length,
+    };
+  });
+
+  // Budget allocations
+  const BUDGET_PIE = [
+    { name: 'Finance', value: 5.2, color: 'var(--ministry-finance)' },
+    { name: 'Health', value: 2.4, color: 'var(--ministry-health)' },
+    { name: 'Education', value: 1.8, color: 'var(--ministry-education)' },
+    { name: 'IT', value: 1.6, color: 'var(--ministry-it)' },
+    { name: 'Others', value: 3.9, color: 'var(--text-muted)' },
+  ];
+
+  // Bills passed by ministry chart data
+  const billsChartData = Object.entries(MINISTRY_LABELS).map(([code, label]) => {
+    const passedCount = bills.filter(b => b.ministry_code === code && (b.status === 'passed' || b.status === 'approved' || b.status === 'enacted')).length;
+    return {
+      name: label.split(' ')[0], // short name
+      bills: passedCount,
+    };
+  });
+
+  const activeLaws = laws.filter(l => l.status === 'active');
+
+  const STATUS_LABEL: Record<string, string> = {
+    exceptional: 'Exceptional', very_good: 'Very Good', good: 'Good',
+    well: 'Well', underperforming: 'Underperforming', poor: 'Poor',
+  };
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'var(--space-8)' }}>
-      {/* Public Header */}
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
@@ -78,7 +102,7 @@ const PublicDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {MINISTRIES.map(m => (
+              {ministriesStatusList.map(m => (
                 <tr key={m.name}>
                   <td className="text-strong">{m.name}</td>
                   <td><span className={`badge badge-${m.status}`}>{STATUS_LABEL[m.status]}</span></td>
@@ -128,7 +152,7 @@ const PublicDashboard: React.FC = () => {
             </div>
             <div className="chart-container" style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={BILLS_DATA} barSize={20}>
+                <BarChart data={billsChartData} barSize={20}>
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }} />
@@ -149,26 +173,25 @@ const PublicDashboard: React.FC = () => {
         <div className="card">
           <div className="card-header">
             <div className="card-title">Enacted Laws — Public Record</div>
-            <span className="badge badge-enacted">42 Laws</span>
+            <span className="badge badge-enacted">{activeLaws.length} Laws</span>
           </div>
           <p style={{ fontSize: '0.82rem', marginBottom: 'var(--space-5)' }}>
             All active laws enacted by parliament and approved by the President. This record is open to all citizens.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-            {[
-              { law: 'LAW-2024-001', title: 'National Health Coverage Act', ministry: 'Health', date: 'Jan 15, 2024' },
-              { law: 'LAW-2024-002', title: 'Digital Education Standards Act', ministry: 'Education', date: 'Feb 3, 2024' },
-              { law: 'LAW-2024-003', title: 'Annual Budget Allocation Framework', ministry: 'Finance', date: 'Feb 20, 2024' },
-              { law: 'LAW-2024-004', title: 'Cybersecurity Infrastructure Act', ministry: 'IT', date: 'Mar 8, 2024' },
-              { law: 'LAW-2024-005', title: 'National Employment Guarantee Act', ministry: 'Career', date: 'Mar 22, 2024' },
-              { law: 'LAW-2024-007', title: 'Mental Health Reform Act', ministry: 'Health', date: 'Apr 18, 2024' },
-            ].map(l => (
-              <div key={l.law} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid var(--border-subtle)' }}>
-                <div className="law-number" style={{ marginBottom: 6 }}>{l.law}</div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: 4 }}>{l.title}</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{l.ministry} · {l.date}</div>
+            {activeLaws.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.88rem', padding: 'var(--space-6)', textAlign: 'center' }}>
+                No active laws enacted yet.
               </div>
-            ))}
+            ) : (
+              activeLaws.map(l => (
+                <div key={l.id} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid var(--border-subtle)' }}>
+                  <div className="law-number" style={{ marginBottom: 6 }}>{l.law_number}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: 4 }}>{l.title}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{l.ministry} · {l.approved_at ? format(new Date(l.approved_at), 'MMM dd, yyyy') : 'Recent'}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

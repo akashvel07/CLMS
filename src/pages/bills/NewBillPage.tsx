@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Send, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DataStore } from '../../lib/dataStore';
+import type { LawItem } from '../../lib/dataStore';
 
 const MINISTRY_OPTIONS = [
   { code: 'health', label: 'Health' },
@@ -25,12 +26,23 @@ const NewBillPage: React.FC = () => {
     title: '',
     description: '',
     ministry_code: user.ministry_id || 'health',
+    type: 'new' as 'new' | 'repeal' | 'suspend',
+    target_law_id: '',
   });
+
+  const [laws, setLaws] = useState<LawItem[]>([]);
+  useEffect(() => {
+    DataStore.getLaws().then(data => setLaws(data.filter(l => l.status === 'active')));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.description.trim()) {
       setError('Please fill in all required fields.');
+      return;
+    }
+    if ((form.type === 'repeal' || form.type === 'suspend') && !form.target_law_id) {
+      setError('Please select a target law.');
       return;
     }
 
@@ -42,6 +54,8 @@ const NewBillPage: React.FC = () => {
         description: form.description,
         ministry_code: form.ministry_code,
         created_by_name: user.name,
+        type: form.type,
+        target_law_id: form.target_law_id || undefined,
       });
 
       if (newBill) {
@@ -91,11 +105,45 @@ const NewBillPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Bill Type <span className="required">*</span></label>
+              <select 
+                className="form-select" 
+                value={form.type} 
+                onChange={e => setForm({ ...form, type: e.target.value as any, target_law_id: '' })}
+                disabled={loading}
+              >
+                <option value="new">Create New Law</option>
+                <option value="repeal">Repeal Existing Law</option>
+                <option value="suspend">Suspend Existing Law</option>
+              </select>
+            </div>
+
+            {(form.type === 'repeal' || form.type === 'suspend') && (
+              <div className="form-group">
+                <label className="form-label">Target Law <span className="required">*</span></label>
+                <select 
+                  className="form-select" 
+                  value={form.target_law_id} 
+                  onChange={e => setForm({ ...form, target_law_id: e.target.value })}
+                  disabled={loading}
+                  required
+                >
+                  <option value="">-- Select Law to {form.type === 'repeal' ? 'Repeal' : 'Suspend'} --</option>
+                  {laws.map(law => (
+                    <option key={law.id} value={law.id}>{law.law_number} - {law.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
           <div className="form-group">
             <label className="form-label">Bill Title <span className="required">*</span></label>
             <input 
               className="form-input" 
-              placeholder="e.g. Universal Healthcare Access Act" 
+              placeholder={form.type === 'new' ? "e.g. Universal Healthcare Access Act" : `e.g. ${form.type === 'repeal' ? 'Repeal' : 'Suspend'} of Law X`}
               value={form.title} 
               onChange={e => setForm({ ...form, title: e.target.value })} 
               disabled={loading}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Search, ChevronRight, Check, X, Pause, Send, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -20,6 +20,11 @@ const BillsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [laws, setLaws] = useState<any[]>([]);
+
+  useEffect(() => {
+    DataStore.getLaws().then(setLaws);
+  }, []);
 
   const selected = bills.find(b => b.id === selectedId) || null;
   const { votes: billVotes } = useVotes(selected?.id);
@@ -123,7 +128,11 @@ const BillsPage: React.FC = () => {
                     >
                       <td><span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span></td>
                       <td className="text-strong" style={{ maxWidth: 200 }}>
-                        <span className="truncate" style={{ display: 'block' }}>{bill.title}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="truncate" style={{ display: 'block' }}>{bill.title}</span>
+                          {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
+                          {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
+                        </div>
                       </td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</td>
                       <td><span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span></td>
@@ -155,6 +164,8 @@ const BillsPage: React.FC = () => {
                 { label: 'Ministry', value: selected.ministry },
                 { label: 'Created By', value: selected.created_by_name || '—' },
                 { label: 'Created', value: selected.created_at ? format(new Date(selected.created_at), 'MMM dd, yyyy') : 'Today' },
+                { label: 'Type', value: selected.type === 'repeal' ? 'Repeal Law' : selected.type === 'suspend' ? 'Suspend Law' : 'New Law' },
+                ...(selected.target_law_id ? [{ label: 'Target Law', value: laws.find(l => l.id === selected.target_law_id)?.law_number || selected.target_law_id }] : []),
               ].map(f => (
                 <div key={f.label}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{f.label}</div>

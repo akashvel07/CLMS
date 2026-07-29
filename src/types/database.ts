@@ -60,6 +60,8 @@ export interface Bill {
   title: string;
   description: string;
   status: BillStatus;
+  type: 'new' | 'repeal' | 'suspend';
+  target_law_id?: string;
   created_by: string;
   ministry_id: string;
   created_at: string;

@@ -15,6 +15,8 @@ export interface BillItem {
   title: string;
   description: string;
   status: BillStatus;
+  type: 'new' | 'repeal' | 'suspend';
+  target_law_id?: string;
   ministry: string;       // human label e.g. "Health"
   ministry_code: string;  // e.g. "health"
   created_by_name: string;
@@ -141,6 +143,8 @@ const rowToBill = (row: any): BillItem => ({
   title: row.title,
   description: row.description ?? '',
   status: row.status as BillStatus,
+  type: row.type || 'new',
+  target_law_id: row.target_law_id,
   ministry: MINISTRY_CODE_TO_LABEL[row.ministry_code] ?? row.ministry_code,
   ministry_code: row.ministry_code,
   created_by_name: row.created_by_name ?? '',
@@ -204,6 +208,8 @@ export const DataStore = {
     description: string;
     ministry_code: string;
     created_by_name: string;
+    type?: 'new' | 'repeal' | 'suspend';
+    target_law_id?: string;
   }): Promise<BillItem | null> => {
     const bill_number = await generateBillNumber(bill.ministry_code);
     const { data, error } = await db
@@ -214,6 +220,8 @@ export const DataStore = {
         description: bill.description,
         ministry_code: bill.ministry_code,
         created_by_name: bill.created_by_name,
+        type: bill.type || 'new',
+        target_law_id: bill.target_law_id || null,
         status: 'draft',
       })
       .select()
@@ -233,7 +241,7 @@ export const DataStore = {
       .eq('id', billId);
     if (error) { console.error('[DataStore] updateBillStatus error:', error); return; }
 
-    // If approved → also create a law
+    // If approved → also create a law or update target law
     if (status === 'approved' || status === 'enacted') {
       const { data: bill } = await db
         .from('bills')
@@ -241,7 +249,13 @@ export const DataStore = {
         .eq('id', billId)
         .single();
       if (bill) {
-        await DataStore.addLawFromBill(rowToBill(bill));
+        if (bill.type === 'repeal' && bill.target_law_id) {
+          await DataStore.updateLawStatus(bill.target_law_id, 'repealed');
+        } else if (bill.type === 'suspend' && bill.target_law_id) {
+          await DataStore.updateLawStatus(bill.target_law_id, 'suspended');
+        } else {
+          await DataStore.addLawFromBill(rowToBill(bill));
+        }
       }
     }
     notifyListeners();

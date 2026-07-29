@@ -28,7 +28,10 @@ function isBillVisibleToUser(
   // President sees everything
   if (role === 'president') return true;
 
-  // Public sees only president-approved (enacted/approved) bills
+  // Active voting bills are visible to everyone so they can vote
+  if (bill.status === 'voting') return true;
+
+  // Public sees only president-approved (enacted/approved) and passed bills
   if (role === 'public') {
     return bill.status === 'approved' || bill.status === 'enacted' || bill.status === 'passed';
   }
@@ -38,7 +41,7 @@ function isBillVisibleToUser(
     // Always see bills from their own ministry
     const userMinLabel = MINISTRY_LABELS[ministryCode ?? ''] ?? ministryCode ?? '';
     if (bill.ministry.toLowerCase() === userMinLabel.toLowerCase()) return true;
-    // Also see president-approved bills from other ministries
+    // Also see president-approved / passed bills from other ministries
     if (bill.status === 'approved' || bill.status === 'enacted' || bill.status === 'passed') return true;
     return false;
   }
@@ -64,6 +67,15 @@ const ParliamentPage: React.FC = () => {
   const { role, user } = useAuth();
   const ministryCode = user.ministry_id ?? undefined;
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
+  const [publicVoterName] = useState<string>(() => {
+    let name = localStorage.getItem('clms_public_voter_name');
+    if (!name) {
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      name = `Public Citizen #${rand}`;
+      localStorage.setItem('clms_public_voter_name', name);
+    }
+    return name;
+  });
 
   const { bills: allBills, loading: billsLoading } = useBills();
 
@@ -96,16 +108,17 @@ const ParliamentPage: React.FC = () => {
   const hasPassed = approveCount >= required;
 
   const userVoteRecord = activeBill
-    ? billVotes.find(v => v.user_name === user.name)
+    ? billVotes.find(v => v.user_name === (role === 'public' ? publicVoterName : user.name))
     : undefined;
 
   const canVote =
     activeBill?.status === 'voting' &&
-    (role === 'president' || role === 'ministry');
+    (role === 'president' || role === 'ministry' || role === 'public');
 
   const handleCastVote = async (choice: 'approve' | 'reject' | 'abstain') => {
     if (!activeBill || !canVote) return;
-    await DataStore.castVote(activeBill.id, user.name, role as any, choice);
+    const voterName = role === 'public' ? publicVoterName : user.name;
+    await DataStore.castVote(activeBill.id, voterName, role as any, choice);
   };
 
   const pieData = [

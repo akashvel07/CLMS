@@ -5,16 +5,16 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import type { BillStatus } from '../../types/database';
 import { DataStore } from '../../lib/dataStore';
-import { useBills } from '../../hooks/useSupabaseData';
+import { useBills, useVotes } from '../../hooks/useSupabaseData';
 
-const WORKFLOW_STEPS = ['Draft', 'Submitted', 'Voting', 'Passed', 'Ministry Review', 'Awaiting President', 'Approved', 'Enacted'];
+const WORKFLOW_STEPS = ['Draft', 'Voting', 'Passed', 'Awaiting President', 'Approved'];
 const STATUS_STEP: Record<BillStatus, number> = {
-  draft: 0, submitted: 1, voting: 2, passed: 3, rejected: 3,
-  suspended: 3, awaiting_president: 5, approved: 6, enacted: 7, archived: 7, deleted: -1,
+  draft: 0, submitted: 1, voting: 1, passed: 2, rejected: 2,
+  suspended: 2, awaiting_president: 3, approved: 4, enacted: 4, archived: 4, deleted: -1,
 };
 
 const BillsPage: React.FC = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { bills, loading } = useBills();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -22,6 +22,7 @@ const BillsPage: React.FC = () => {
   const [updating, setUpdating] = useState(false);
 
   const selected = bills.find(b => b.id === selectedId) || null;
+  const { votes: billVotes } = useVotes(selected?.id);
 
   const filtered = bills.filter(b => {
     const ms = !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.bill_number.toLowerCase().includes(search.toLowerCase());
@@ -33,6 +34,23 @@ const BillsPage: React.FC = () => {
     if (!selected || updating) return;
     setUpdating(true);
     await DataStore.updateBillStatus(selected.id, status);
+    setUpdating(false);
+  };
+
+  const handleCloseVoting = async () => {
+    if (!selected || updating) return;
+    setUpdating(true);
+    
+    const votesForBill = billVotes.filter(v => v.bill_id === selected.id);
+    const approveCount = votesForBill.filter(v => v.vote === 'approve').length;
+    const rejectCount = votesForBill.filter(v => v.vote === 'reject').length;
+    const total = approveCount + rejectCount;
+    
+    // Tally rules: 60% positive of cast Approve/Reject votes
+    const positivePercent = total > 0 ? approveCount / total : 0;
+    const passed = positivePercent >= 0.6;
+    
+    await DataStore.updateBillStatus(selected.id, passed ? 'passed' : 'rejected');
     setUpdating(false);
   };
 
@@ -176,48 +194,95 @@ const BillsPage: React.FC = () => {
             </div>
 
             {/* Actions */}
-            {role !== 'public' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {updating && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Saving...
-                  </div>
-                )}
-                {selected.status === 'draft' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => handleAction('submitted')} disabled={updating}>
-                    <Send size={13} /> Submit to Parliament
-                  </button>
-                )}
-                {selected.status === 'submitted' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => handleAction('voting')} disabled={updating}>
-                    <Send size={13} /> Open Parliament Voting
-                  </button>
-                )}
-                {selected.status === 'voting' && (
-                  <button className="btn btn-warning btn-sm" onClick={() => handleAction('awaiting_president')} disabled={updating}>
-                    <Send size={13} /> Send to President for Approval
-                  </button>
-                )}
-                {(selected.status === 'awaiting_president' || selected.status === 'voting' || selected.status === 'passed') && (
-                  <>
-                    <button className="btn btn-success btn-sm" onClick={() => handleAction('approved')} disabled={updating}>
-                      <Check size={13} /> Approve & Enact Law
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {updating && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 6 }}>
+                  <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
+                </div>
+              )}
+
+              {/* DRAFTER/CREATOR ACTIONS */}
+              {user && (user.name === selected.created_by_name) && (
+                <>
+                  {selected.status === 'draft' && (
+                    <button className="btn btn-primary btn-sm" onClick={() => handleAction('voting')} disabled={updating}>
+                      <Send size={13} /> Send Draft to Parliament (Open Voting)
                     </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleAction('rejected')} disabled={updating}>
-                      <X size={13} /> Reject Bill
+                  )}
+                  {selected.status === 'voting' && (
+                    <div style={{ background: 'var(--bg-elevated)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', marginBottom: 4 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Drafter Parliament Action</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                        Current votes: <strong>{billVotes.filter(v => v.vote === 'approve').length} Approve</strong>, <strong>{billVotes.filter(v => v.vote === 'reject').length} Reject</strong>.
+                        {billVotes.length > 0 ? ` Ratio: ${Math.round((billVotes.filter(v => v.vote === 'approve').length / (billVotes.filter(v => v.vote === 'approve').length + billVotes.filter(v => v.vote === 'reject').length || 1)) * 100)}% positive.` : ' No votes cast yet.'}
+                      </div>
+                      <button className="btn btn-warning btn-sm" style={{ width: '100%' }} onClick={handleCloseVoting} disabled={updating}>
+                        Close Voting & Tally Results
+                      </button>
+                    </div>
+                  )}
+                  {selected.status === 'passed' && (
+                    <button className="btn btn-success btn-sm" onClick={() => handleAction('awaiting_president')} disabled={updating}>
+                      <Send size={13} /> Submit for Presidential Approval
                     </button>
-                    <button className="btn btn-warning btn-sm" onClick={() => handleAction('suspended')} disabled={updating}>
-                      <Pause size={13} /> Suspend Bill
+                  )}
+                </>
+              )}
+
+              {/* PRESIDENT ACTIONS */}
+              {role === 'president' && (
+                <>
+                  {/* President can reject or suspend draft or voting stage */}
+                  {(selected.status === 'draft' || selected.status === 'voting') && (
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                      <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleAction('rejected')} disabled={updating}>
+                        <X size={13} /> Reject Bill
+                      </button>
+                      <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => handleAction('suspended')} disabled={updating}>
+                        <Pause size={13} /> Suspend Bill
+                      </button>
+                    </div>
+                  )}
+
+                  {/* President can approve, reject or hold when awaiting_president */}
+                  {selected.status === 'awaiting_president' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                      <button className="btn btn-success btn-sm" onClick={() => handleAction('approved')} disabled={updating}>
+                        <Check size={13} /> Approve & Enact Law
+                      </button>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                        <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleAction('rejected')} disabled={updating}>
+                          <X size={13} /> Reject
+                        </button>
+                        <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => handleAction('suspended')} disabled={updating}>
+                          <Pause size={13} /> Hold (Suspend)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* President can re-open voting if suspended or rejected */}
+                  {(selected.status === 'suspended' || selected.status === 'rejected') && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleAction('voting')} disabled={updating}>
+                      Re-open Voting / Lift Hold
                     </button>
-                  </>
-                )}
-                {(selected.status === 'suspended' || selected.status === 'rejected') && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleAction('voting')} disabled={updating}>
-                    Re-open Voting
-                  </button>
-                )}
-              </div>
-            )}
+                  )}
+                </>
+              )}
+
+              {/* Informative text for public observer or other ministries */}
+              {!(user && user.name === selected.created_by_name) && role !== 'president' && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: 4 }}>
+                  {selected.status === 'draft' && "Waiting for drafter to submit to parliament."}
+                  {selected.status === 'voting' && "Voting in progress. Cast your vote on the Parliament page!"}
+                  {selected.status === 'passed' && "Voting passed. Waiting for drafter to submit for presidential approval."}
+                  {selected.status === 'awaiting_president' && "Waiting for Presidential decision (Approve / Reject / Hold)."}
+                  {selected.status === 'approved' && "Approved and enacted as a Law in the Constitution."}
+                  {selected.status === 'rejected' && "This bill has been rejected."}
+                  {selected.status === 'suspended' && "This bill has been suspended (placed on hold)."}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

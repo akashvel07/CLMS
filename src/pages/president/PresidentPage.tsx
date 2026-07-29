@@ -204,9 +204,11 @@ const PresidentPage: React.FC = () => {
                       <span className={`badge badge-${b.status}`} style={{ fontSize: '0.62rem' }}>{b.status.replace('_', ' ')}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                      <button className="btn btn-success btn-sm" onClick={() => handleApproveBill(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
-                        <CheckCircle size={12} /> Approve
-                      </button>
+                      {b.status === 'awaiting_president' && (
+                        <button className="btn btn-success btn-sm" onClick={() => handleApproveBill(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
+                          <CheckCircle size={12} /> Approve
+                        </button>
+                      )}
                       <button className="btn btn-danger btn-sm" onClick={() => handleRejectBill(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
                         <XCircle size={12} /> Reject
                       </button>

@@ -14,14 +14,14 @@ const FinancePage: React.FC = () => (
     color: 'var(--ministry-finance)', glow: 'var(--ministry-finance-glow)',
     icon: <BadgeDollarSign size={28} />,
     description: 'Treasury management, national budget, spending oversight, and revenue monitoring.',
-    status: 'exceptional', score: 94, budget: '₡5.2M', canSuspend: true,
+    status: 'exceptional', score: 94, budget: '₹5.2M', canSuspend: true,
     metrics: [
-      { label: 'Treasury', value: '₡5.2M', trend: 'up', sub: '+12% YTD' },
+      { label: 'Treasury', value: '₹5.2M', trend: 'up', sub: '+12% YTD' },
       { label: 'Budget Used', value: '68', unit: '%', trend: 'flat', sub: 'On track' },
-      { label: 'Expenses', value: '₡3.5M', trend: 'down', sub: '-4% MoM' },
-      { label: 'Cash Flow', value: '+₡0.8M', trend: 'up', sub: 'Positive' },
+      { label: 'Expenses', value: '₹3.5M', trend: 'down', sub: '-4% MoM' },
+      { label: 'Cash Flow', value: '+₹0.8M', trend: 'up', sub: 'Positive' },
     ],
-    chartData: CHART, chartLabel: 'Treasury Balance (₡M)',
+    chartData: CHART, chartLabel: 'Treasury Balance (₹M)',
   }} />
 );
 

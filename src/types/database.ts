@@ -141,6 +141,15 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface BudgetAllocation {
+  id: string;
+  month: number;
+  year: number;
+  allocations: Record<string, number>;
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 // Supabase Database type map (used for typed client)
 export interface Database {
   public: {

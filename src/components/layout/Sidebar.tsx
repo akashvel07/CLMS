@@ -132,6 +132,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         {/* Requests */}
         <div className="nav-section">
           {!collapsed && <div className="nav-section-label">Operations</div>}
+          {(role === 'president' || userMinistryCode === 'finance') && (
+            <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/finance/budget">
+              <DollarSign className="nav-icon" size={18} />
+              <span className="nav-label">Budget Allocation</span>
+            </NavLink>
+          )}
           <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/requests">
             <MessageSquare className="nav-icon" size={18} />
             <span className="nav-label">Requests</span>

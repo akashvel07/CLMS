@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Crown, CheckCircle, XCircle, PauseCircle, Flag, Bell, TrendingUp, TrendingDown, FileText, MessageSquare, AlertTriangle, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBills, useRequests, useLaws } from '../../hooks/useSupabaseData';
+import { useBills, useRequests, useLaws, useBudgets } from '../../hooks/useSupabaseData';
 import { DataStore } from '../../lib/dataStore';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -22,10 +22,14 @@ const PresidentPage: React.FC = () => {
   const { bills } = useBills();
   const { requests } = useRequests();
   const { laws } = useLaws();
+  const { budgets } = useBudgets();
+
+  const isBudgetApprovalDay = new Date().getDate() >= 25;
 
   // Filter pending approvals (Bills awaiting president + Pending Requests)
   const pendingBills = bills.filter(b => b.status === 'awaiting_president' || b.status === 'suspended' || b.status === 'voting');
-  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const pendingRequests = requests.filter(r => r.president_status === 'pending');
+  const pendingBudgets = budgets.filter(b => b.status === 'pending_approval');
 
   const topStats = [
     { label: 'Total Ministries', value: '8', icon: Crown, color: 'var(--accent-gold)', glow: 'var(--ministry-president-glow)' },
@@ -37,14 +41,14 @@ const PresidentPage: React.FC = () => {
   ];
 
   const ministryStatusList = [
-    { name: 'Health', code: 'health', status: 'very_good', score: 87, budget: '₡2.4M', trend: 'up', requests: requests.filter(r => r.from === 'Health').length, bills: bills.filter(b => b.ministry === 'Health').length, alerts: 0, color: 'var(--ministry-health)' },
-    { name: 'Education', code: 'education', status: 'good', score: 79, budget: '₡1.8M', trend: 'up', requests: requests.filter(r => r.from === 'Education').length, bills: bills.filter(b => b.ministry === 'Education').length, alerts: 0, color: 'var(--ministry-education)' },
-    { name: 'Finance', code: 'finance', status: 'exceptional', score: 94, budget: '₡5.2M', trend: 'up', requests: requests.filter(r => r.from === 'Finance').length, bills: bills.filter(b => b.ministry === 'Finance').length, alerts: 0, color: 'var(--ministry-finance)' },
-    { name: 'Career', code: 'career', status: 'well', score: 72, budget: '₡1.1M', trend: 'down', requests: requests.filter(r => r.from === 'Career').length, bills: bills.filter(b => b.ministry === 'Career').length, alerts: 1, color: 'var(--ministry-career)' },
-    { name: 'IT', code: 'it', status: 'good', score: 81, budget: '₡1.6M', trend: 'up', requests: requests.filter(r => r.from === 'IT').length, bills: bills.filter(b => b.ministry === 'IT').length, alerts: 0, color: 'var(--ministry-it)' },
-    { name: 'Personal Dev', code: 'personal_dev', status: 'underperforming', score: 58, budget: '₡0.6M', trend: 'down', requests: requests.filter(r => r.from === 'Personal Dev').length, bills: bills.filter(b => b.ministry === 'Personal Dev').length, alerts: 2, color: 'var(--ministry-personal)' },
-    { name: 'Entertainment', code: 'entertainment', status: 'well', score: 70, budget: '₡0.9M', trend: 'up', requests: requests.filter(r => r.from === 'Entertainment').length, bills: bills.filter(b => b.ministry === 'Entertainment').length, alerts: 0, color: 'var(--ministry-entertainment)' },
-    { name: 'External Affairs', code: 'external_affairs', status: 'good', score: 76, budget: '₡1.3M', trend: 'up', requests: requests.filter(r => r.from === 'External Affairs').length, bills: bills.filter(b => b.ministry === 'External Affairs').length, alerts: 1, color: 'var(--ministry-external)' },
+    { name: 'Health', code: 'health', status: 'very_good', score: 87, budget: '₹2.4M', trend: 'up', requests: requests.filter(r => r.from === 'Health').length, bills: bills.filter(b => b.ministry === 'Health').length, alerts: 0, color: 'var(--ministry-health)' },
+    { name: 'Education', code: 'education', status: 'good', score: 79, budget: '₹1.8M', trend: 'up', requests: requests.filter(r => r.from === 'Education').length, bills: bills.filter(b => b.ministry === 'Education').length, alerts: 0, color: 'var(--ministry-education)' },
+    { name: 'Finance', code: 'finance', status: 'exceptional', score: 94, budget: '₹5.2M', trend: 'up', requests: requests.filter(r => r.from === 'Finance').length, bills: bills.filter(b => b.ministry === 'Finance').length, alerts: 0, color: 'var(--ministry-finance)' },
+    { name: 'Career', code: 'career', status: 'well', score: 72, budget: '₹1.1M', trend: 'down', requests: requests.filter(r => r.from === 'Career').length, bills: bills.filter(b => b.ministry === 'Career').length, alerts: 1, color: 'var(--ministry-career)' },
+    { name: 'IT', code: 'it', status: 'good', score: 81, budget: '₹1.6M', trend: 'up', requests: requests.filter(r => r.from === 'IT').length, bills: bills.filter(b => b.ministry === 'IT').length, alerts: 0, color: 'var(--ministry-it)' },
+    { name: 'Personal Dev', code: 'personal_dev', status: 'underperforming', score: 58, budget: '₹0.6M', trend: 'down', requests: requests.filter(r => r.from === 'Personal Dev').length, bills: bills.filter(b => b.ministry === 'Personal Dev').length, alerts: 2, color: 'var(--ministry-personal)' },
+    { name: 'Entertainment', code: 'entertainment', status: 'well', score: 70, budget: '₹0.9M', trend: 'up', requests: requests.filter(r => r.from === 'Entertainment').length, bills: bills.filter(b => b.ministry === 'Entertainment').length, alerts: 0, color: 'var(--ministry-entertainment)' },
+    { name: 'External Affairs', code: 'external_affairs', status: 'good', score: 76, budget: '₹1.3M', trend: 'up', requests: requests.filter(r => r.from === 'External Affairs').length, bills: bills.filter(b => b.ministry === 'External Affairs').length, alerts: 1, color: 'var(--ministry-external)' },
   ];
 
   const handleApproveBill = async (id: string) => {
@@ -60,15 +64,23 @@ const PresidentPage: React.FC = () => {
   };
 
   const handleApproveRequest = async (id: string) => {
-    await DataStore.updateRequestStatus(id, 'approved');
+    await DataStore.updateRequestStatus(id, 'approved', 'approved');
   };
 
   const handleRejectRequest = async (id: string) => {
-    await DataStore.updateRequestStatus(id, 'rejected');
+    await DataStore.updateRequestStatus(id, 'rejected', 'rejected');
   };
 
   const handleReturnRequest = async (id: string) => {
-    await DataStore.updateRequestStatus(id, 'returned');
+    await DataStore.updateRequestStatus(id, 'returned', 'returned');
+  };
+
+  const handleApproveBudget = async (id: string) => {
+    await DataStore.updateBudgetStatus(id, 'approved');
+  };
+
+  const handleRejectBudget = async (id: string) => {
+    await DataStore.updateBudgetStatus(id, 'rejected');
   };
 
   return (
@@ -179,7 +191,7 @@ const PresidentPage: React.FC = () => {
             <div className="card-header">
               <div className="card-title">Pending Executive Approvals</div>
               <span className="badge badge-awaiting_president">
-                {pendingBills.length + pendingRequests.length} Pending
+                {pendingBills.length + pendingRequests.length + pendingBudgets.length} Pending
               </span>
             </div>
 
@@ -242,6 +254,38 @@ const PresidentPage: React.FC = () => {
                       <button className="btn btn-warning btn-sm" onClick={() => handleReturnRequest(r.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
                         <PauseCircle size={12} /> Return
                       </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Pending Budgets */}
+                {pendingBudgets.map(b => (
+                  <div key={b.id} style={{
+                    background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)',
+                    border: '1px solid var(--border-subtle)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Budget Allocation for Month {b.month}/{b.year}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Budget · Finance</div>
+                      </div>
+                      <span className="badge badge-warning" style={{ fontSize: '0.62rem' }}>Pending</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                      {isBudgetApprovalDay ? (
+                        <>
+                          <button className="btn btn-success btn-sm" onClick={() => handleApproveBudget(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
+                            <CheckCircle size={12} /> Approve
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleRejectBudget(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
+                            <XCircle size={12} /> Reject
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--status-suspended)', padding: '4px 0' }}>
+                          Approval opens on the 25th.
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

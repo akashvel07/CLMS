@@ -29,7 +29,7 @@ const PublicDashboard: React.FC = () => {
       name: label,
       status: 'good',
       bills: minBills.filter(b => b.status !== 'draft').length,
-      budget: code === 'finance' ? '₡5.2M' : code === 'health' ? '₡2.4M' : code === 'education' ? '₡1.8M' : '₡1.0M',
+      budget: code === 'finance' ? '₹5.2M' : code === 'health' ? '₹2.4M' : code === 'education' ? '₹1.8M' : '₹1.0M',
       requests: minRequests.filter(r => r.status === 'pending').length,
     };
   });
@@ -120,7 +120,7 @@ const PublicDashboard: React.FC = () => {
           <div className="card">
             <div className="card-header">
               <div className="card-title">Budget Allocation</div>
-              <div className="card-subtitle">By ministry (₡M)</div>
+              <div className="card-subtitle">By ministry (₹M)</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', height: 200 }}>
               <div style={{ flex: 1, height: 200 }}>
@@ -129,7 +129,7 @@ const PublicDashboard: React.FC = () => {
                     <Pie data={BUDGET_PIE} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
                       {BUDGET_PIE.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`₡${v}M`, '']} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`₹${v}M`, '']} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -138,7 +138,7 @@ const PublicDashboard: React.FC = () => {
                   <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem' }}>
                     <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color }} />
                     <span style={{ color: 'var(--text-muted)' }}>{d.name}</span>
-                    <strong style={{ color: 'var(--text-primary)', marginLeft: 'auto' }}>₡{d.value}M</strong>
+                    <strong style={{ color: 'var(--text-primary)', marginLeft: 'auto' }}>₹{d.value}M</strong>
                   </div>
                 ))}
               </div>

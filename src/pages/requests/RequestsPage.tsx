@@ -171,8 +171,8 @@ const RequestsPage: React.FC = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Amount (₡)</label>
-                <input className="form-input" type="number" placeholder="0 if no budget needed" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                <label className="form-label">Amount (₹)</label>
+                <input className="form-input" type="number" placeholder="0 if no budget needed" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} disabled={form.to !== 'Finance'} />
               </div>
             </div>
             <div className="form-group">
@@ -281,7 +281,7 @@ const RequestsPage: React.FC = () => {
                       {r.to}
                     </td>
                     <td><span className={`badge badge-${r.priority}`}>{r.priority}</span></td>
-                    <td style={{ fontSize: '0.82rem' }}>{r.amount > 0 ? `₡${r.amount.toLocaleString()}` : '—'}</td>
+                    <td style={{ fontSize: '0.82rem' }}>{r.amount > 0 ? `₹${r.amount.toLocaleString()}` : '—'}</td>
                     <td><span className={`badge badge-${r.status === 'approved' ? 'passed' : r.status === 'rejected' ? 'rejected' : r.status === 'returned' ? 'suspended' : 'submitted'}`}>{r.status}</span></td>
                     <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                       {r.created_at ? format(new Date(r.created_at), 'MMM dd') : 'Recent'}

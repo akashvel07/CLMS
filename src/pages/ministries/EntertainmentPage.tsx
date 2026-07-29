@@ -14,7 +14,7 @@ const EntertainmentPage: React.FC = () => (
     color: 'var(--ministry-entertainment)', glow: 'var(--ministry-entertainment-glow)',
     icon: <Gamepad2 size={28} />,
     description: 'Recreation services, media oversight, cultural events, and public entertainment standards.',
-    status: 'well', score: 70, budget: '₡0.9M', canSuspend: false,
+    status: 'well', score: 70, budget: '₹0.9M', canSuspend: false,
     metrics: [
       { label: 'Screen Time', value: '3.4', unit: 'hrs/day', trend: 'flat' },
       { label: 'Events This Month', value: '24', trend: 'up', sub: '+6 MoM' },

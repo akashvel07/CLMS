@@ -14,7 +14,7 @@ const CareerPage: React.FC = () => (
     color: 'var(--ministry-career)', glow: 'var(--ministry-career-glow)',
     icon: <Briefcase size={28} />,
     description: 'Employment opportunities, job matching, skills development, and career growth programs.',
-    status: 'well', score: 72, budget: '₡1.1M', canSuspend: false,
+    status: 'well', score: 72, budget: '₹1.1M', canSuspend: false,
     metrics: [
       { label: 'Applications', value: '3,842', trend: 'up', sub: '+12% MoM' },
       { label: 'Interviews', value: '428', trend: 'up' },

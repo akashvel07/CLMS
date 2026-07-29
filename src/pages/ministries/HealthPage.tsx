@@ -14,7 +14,7 @@ const HealthPage: React.FC = () => (
     color: 'var(--ministry-health)', glow: 'var(--ministry-health-glow)',
     icon: <HeartPulse size={28} />,
     description: 'National health, medical data, wellness indicators, and public healthcare policy.',
-    status: 'very_good', score: 87, budget: '₡2.4M', canSuspend: true,
+    status: 'very_good', score: 87, budget: '₹2.4M', canSuspend: true,
     metrics: [
       { label: 'Health Index', value: '87', unit: '/100', trend: 'up', sub: '+2 this month' },
       { label: 'Exercise Score', value: '74', unit: '%', trend: 'up' },

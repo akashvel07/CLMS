@@ -14,7 +14,7 @@ const ITPage: React.FC = () => (
     color: 'var(--ministry-it)', glow: 'var(--ministry-it-glow)',
     icon: <Laptop size={28} />,
     description: 'Digital services, infrastructure, applications, and technology governance.',
-    status: 'good', score: 81, budget: '₡1.6M', canSuspend: false,
+    status: 'good', score: 81, budget: '₹1.6M', canSuspend: false,
     metrics: [
       { label: 'Devices Online', value: '1,247', trend: 'up' },
       { label: 'Digital Usage', value: '7.4', unit: 'hrs/day', trend: 'up', sub: '+0.3 MoM' },

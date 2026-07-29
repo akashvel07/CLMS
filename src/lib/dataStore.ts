@@ -30,7 +30,8 @@ export interface RequestItem {
   title: string;
   description: string;
   amount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'returned';
+  status: 'pending' | 'approved' | 'rejected' | 'returned' | 'completed';
+  president_status?: 'pending' | 'approved' | 'rejected' | 'returned' | 'completed' | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
   created_at: string;
 }
@@ -160,6 +161,7 @@ const rowToRequest = (row: any): RequestItem => ({
   description: row.description ?? '',
   amount: Number(row.amount) || 0,
   status: row.status as RequestItem['status'],
+  president_status: row.president_status as RequestItem['president_status'],
   priority: row.priority as RequestItem['priority'],
   created_at: row.created_at,
 });
@@ -327,7 +329,8 @@ export const DataStore = {
         description: req.description,
         amount: req.amount,
         priority: req.priority,
-        status: 'pending',
+        status: req.amount > 200 ? 'pending' : 'pending',
+        president_status: req.amount > 200 ? 'pending' : null,
       })
       .select()
       .single();
@@ -338,11 +341,16 @@ export const DataStore = {
 
   updateRequestStatus: async (
     requestId: string,
-    status: 'pending' | 'approved' | 'rejected' | 'returned'
+    status: 'pending' | 'approved' | 'rejected' | 'returned' | 'completed',
+    president_status?: 'pending' | 'approved' | 'rejected' | 'returned' | 'completed' | null
   ): Promise<void> => {
+    const updatePayload: any = { status };
+    if (president_status !== undefined) {
+      updatePayload.president_status = president_status;
+    }
     const { error } = await db
       .from('requests')
-      .update({ status })
+      .update(updatePayload)
       .eq('id', requestId);
     if (error) console.error('[DataStore] updateRequestStatus error:', error);
     notifyListeners();
@@ -377,6 +385,47 @@ export const DataStore = {
         { onConflict: 'bill_id,voted_by_name' }
       );
     if (error) console.error('[DataStore] castVote error:', error);
+    notifyListeners();
+  },
+
+  // ─── BUDGETS ──────────────────────────────────────────────────────────────
+
+  getBudgets: async () => {
+    const { data, error } = await db
+      .from('budget_allocations')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getBudgets error:', error); return []; }
+    return data;
+  },
+
+  saveBudget: async (month: number, year: number, allocations: Record<string, number>, status: 'draft' | 'pending_approval') => {
+    const { error } = await db
+      .from('budget_allocations')
+      .upsert(
+        { month, year, allocations, status },
+        { onConflict: 'month,year' }
+      );
+    if (error) console.error('[DataStore] saveBudget error:', error);
+    notifyListeners();
+  },
+
+  updateBudgetStatus: async (id: string, status: 'approved' | 'rejected') => {
+    const { error } = await db
+      .from('budget_allocations')
+      .update({ status })
+      .eq('id', id);
+    if (error) console.error('[DataStore] updateBudgetStatus error:', error);
+
+    // If approved, update ministry budgets
+    if (status === 'approved') {
+      const { data: budget } = await db.from('budget_allocations').select('*').eq('id', id).single();
+      if (budget && budget.allocations) {
+        for (const [code, amount] of Object.entries(budget.allocations)) {
+          await db.from('ministries').update({ budget: Number(amount) }).eq('code', code);
+        }
+      }
+    }
     notifyListeners();
   },
 };

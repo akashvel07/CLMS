@@ -14,7 +14,7 @@ const PersonalDevPage: React.FC = () => (
     color: 'var(--ministry-personal)', glow: 'var(--ministry-personal-glow)',
     icon: <Star size={28} />,
     description: 'Personal goals, habit tracking, growth programs, and wellness journaling initiatives.',
-    status: 'underperforming', score: 58, budget: '₡0.6M', canSuspend: false,
+    status: 'underperforming', score: 58, budget: '₹0.6M', canSuspend: false,
     metrics: [
       { label: 'Active Goals', value: '14', trend: 'up', sub: '+2 this week' },
       { label: 'Habits Tracked', value: '7', unit: '/day', trend: 'flat' },

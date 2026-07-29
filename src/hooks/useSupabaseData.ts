@@ -93,3 +93,23 @@ export function useRequests() {
 
   return { requests, loading, refetch: fetchRequests };
 }
+
+export function useBudgets() {
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBudgets = async () => {
+    setLoading(true);
+    const data = await DataStore.getBudgets();
+    setBudgets(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchBudgets();
+    const unsub = DataStore.subscribe(fetchBudgets);
+    return unsub;
+  }, []);
+
+  return { budgets, loading, refresh: fetchBudgets };
+}

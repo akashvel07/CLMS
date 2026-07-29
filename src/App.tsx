@@ -19,6 +19,7 @@ import SettingsPage from './pages/settings/SettingsPage';
 import HealthPage from './pages/ministries/HealthPage';
 import EducationPage from './pages/ministries/EducationPage';
 import FinancePage from './pages/ministries/FinancePage';
+import FinanceBudgetPage from './pages/finance/FinanceBudgetPage';
 import ITPage from './pages/ministries/ITPage';
 import EntertainmentPage from './pages/ministries/EntertainmentPage';
 import CareerPage from './pages/ministries/CareerPage';
@@ -48,6 +49,7 @@ function App() {
             <Route path="/ministries/health" element={<HealthPage />} />
             <Route path="/ministries/education" element={<EducationPage />} />
             <Route path="/ministries/finance" element={<FinancePage />} />
+            <Route path="/finance/budget" element={<FinanceBudgetPage />} />
             <Route path="/ministries/it" element={<ITPage />} />
             <Route path="/ministries/entertainment" element={<EntertainmentPage />} />
             <Route path="/ministries/career" element={<CareerPage />} />

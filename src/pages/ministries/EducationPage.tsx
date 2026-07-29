@@ -14,7 +14,7 @@ const EducationPage: React.FC = () => (
     color: 'var(--ministry-education)', glow: 'var(--ministry-education-glow)',
     icon: <GraduationCap size={28} />,
     description: 'Learning metrics, courses, certifications, and knowledge statistics for all citizens.',
-    status: 'good', score: 79, budget: '₡1.8M', canSuspend: true,
+    status: 'good', score: 79, budget: '₹1.8M', canSuspend: true,
     metrics: [
       { label: 'Study Hours', value: '4.2', unit: 'hrs/day', trend: 'up' },
       { label: 'Active Skills', value: '18', unit: 'skills', trend: 'up', sub: '+3 this month' },

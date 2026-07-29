@@ -14,7 +14,7 @@ const ExternalAffairsPage: React.FC = () => (
     color: 'var(--ministry-external)', glow: 'var(--ministry-external-glow)',
     icon: <Globe2 size={28} />,
     description: 'Inter-ministry communications, external partnerships, and diplomatic coordination.',
-    status: 'good', score: 76, budget: '₡1.3M', canSuspend: false,
+    status: 'good', score: 76, budget: '₹1.3M', canSuspend: false,
     metrics: [
       { label: 'Communications', value: '18', trend: 'up', sub: 'This month' },
       { label: 'Active Requests', value: '4', trend: 'flat' },

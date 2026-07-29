@@ -218,7 +218,10 @@ export const DataStore = {
       })
       .select()
       .single();
-    if (error) { console.error('[DataStore] addBill error:', error); return null; }
+    if (error) {
+      console.error('[DataStore] addBill error:', error);
+      throw new Error(error.message || 'Database insert failed');
+    }
     notifyListeners();
     return rowToBill(data);
   },

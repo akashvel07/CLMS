@@ -16,7 +16,7 @@ const MINISTRIES_LIST = [
 ];
 
 const LoginPage: React.FC = () => {
-  const { signIn, signUp, isDemoMode } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -105,7 +105,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Mode Selector Tabs */}
-        {!isDemoMode && (
+        {true && (
           <div style={{
             display: 'flex',
             background: 'var(--bg-card)',
@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
             <h2 style={{ fontSize: '1.2rem', margin: 0 }}>
               {mode === 'signin' ? 'Sign In' : 'Create Supabase Account'}
             </h2>
-            {!isDemoMode ? (
+            {true ? (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'hsla(220,90%,60%,0.12)',

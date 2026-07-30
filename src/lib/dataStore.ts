@@ -101,6 +101,7 @@ export const MINISTRY_CODE_TO_LABEL: Record<string, string> = {
   personal_dev: 'Personal Development',
   entertainment: 'Entertainment',
   external_affairs: 'External Affairs',
+  transport_road: 'Road Safety & Transport',
 };
 
 export const MINISTRY_LABEL_TO_CODE: Record<string, string> = Object.fromEntries(
@@ -118,6 +119,7 @@ const MINISTRY_PREFIX: Record<string, string> = {
   personal_dev: 'PD',
   entertainment: 'EN',
   external_affairs: 'EA',
+  transport_road: 'TR',
 };
 
 async function generateBillNumber(ministryCode: string): Promise<string> {
@@ -334,7 +336,7 @@ export const DataStore = {
         description: req.description,
         amount: req.amount,
         priority: req.priority,
-        status: req.amount > 200 ? 'pending' : 'pending',
+        status: 'pending',
         president_status: req.amount > 200 ? 'pending' : null,
       })
       .select()

@@ -5,6 +5,7 @@ import { useBills, useVotes } from '../../hooks/useSupabaseData';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
 import { DataStore, type BillItem } from '../../lib/dataStore';
+import { ParliamentSeatingChart } from '../../components/ui/ParliamentSeatingChart';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,22 @@ const ParliamentPage: React.FC = () => {
             <p>Live voting session & record — {format(new Date(), 'MMMM dd, yyyy')}</p>
           </div>
         </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Active Bills', value: allBills.filter(b => b.status === 'voting').length, color: 'hsl(35,90%,55%)', icon: '🗳️' },
+          { label: 'Passed Laws', value: allBills.filter(b => b.status === 'passed' || b.status === 'enacted').length, color: 'hsl(152,70%,45%)', icon: '📜' },
+          { label: 'Rejected Bills', value: allBills.filter(b => b.status === 'rejected').length, color: 'hsl(0,72%,55%)', icon: '🚫' },
+          { label: 'Total Bills', value: allBills.length, color: 'hsl(220,15%,55%)', icon: '📁' },
+        ].map(s => (
+          <div key={s.label} className="card" style={{ flex: '1 1 120px', padding: 'var(--space-4)', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: 4 }}>{s.icon}</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Bill List Selector */}
@@ -356,33 +373,18 @@ const ParliamentPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Pie Chart */}
+              {/* SVG Seating Chart */}
               <div className="card">
                 <div className="card-header">
-                  <div className="card-title">Vote Distribution</div>
+                  <div className="card-title">Parliament Seat Distribution</div>
                 </div>
                 {total > 0 ? (
-                  <>
-                    <div style={{ height: 200 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                            {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                          </Pie>
-                          <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, fontSize: 12 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-5)', marginTop: 'var(--space-2)' }}>
-                      {pieData.map(d => (
-                        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
-                          <div style={{ width: 10, height: 10, borderRadius: 2, background: d.color }} />
-                          <span style={{ color: 'var(--text-muted)' }}>{d.name}</span>
-                          <strong style={{ color: 'var(--text-primary)' }}>{d.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </>
+                  <ParliamentSeatingChart 
+                    approveCount={approveCount} 
+                    rejectCount={rejectCount} 
+                    abstainCount={abstainCount} 
+                    total={total} 
+                  />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-muted)', fontSize: '0.88rem' }}>
                     No votes cast yet

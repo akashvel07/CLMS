@@ -14,7 +14,8 @@ const MINISTRIES = [
   { id: 'it', name: 'Information Technology' },
   { id: 'personal_dev', name: 'Personal Development' },
   { id: 'entertainment', name: 'Entertainment' },
-  { id: 'external_affairs', name: 'External Affairs' }
+  { id: 'external_affairs', name: 'External Affairs' },
+  { id: 'transport_road', name: 'Road Safety & Transport' }
 ];
 
 const FinanceBudgetPage: React.FC = () => {
@@ -55,11 +56,46 @@ const FinanceBudgetPage: React.FC = () => {
     }
   }, [currentBudget]);
 
+  // Auto-add approved requests
+  useEffect(() => {
+    const approvedRequests = requests.filter(r => {
+      const isTargetFinance = r.to.toLowerCase() === 'finance';
+      if (!isTargetFinance) return false;
+      
+      const isApprovedSmall = r.amount <= 200 && r.status === 'approved';
+      const isApprovedLarge = r.amount > 200 && r.president_status === 'approved';
+      
+      return isApprovedSmall || isApprovedLarge;
+    });
+
+    if (approvedRequests.length > 0) {
+      setAllocations(prev => {
+        let modified = false;
+        const newAllocations = [...prev];
+        approvedRequests.forEach(req => {
+          if (!newAllocations.some(a => a.source_request_id === req.id)) {
+            const minCode = MINISTRIES.find(m => m.name.toLowerCase() === req.from.toLowerCase())?.id || 'finance';
+            newAllocations.push({
+              id: crypto.randomUUID(),
+              ministry_code: minCode,
+              title: `Request: ${req.title}`,
+              amount: req.amount,
+              source_request_id: req.id,
+              status: 'pending'
+            });
+            modified = true;
+          }
+        });
+        return modified ? newAllocations : prev;
+      });
+    }
+  }, [requests]);
+
   const totalAllocated = allocations.reduce((acc, item) => acc + (item.status !== 'rejected' ? item.amount : 0), 0);
 
-  // Requests > 200 to Finance that haven't been added to the budget
+  // Requests > 200 to Finance that haven't been added to the budget and are still pending President
   const pendingRequests = requests.filter(r => 
-    r.to === 'Finance' && 
+    r.to.toLowerCase() === 'finance' && 
     r.amount > 200 && 
     r.president_status === 'pending' &&
     !allocations.some(a => a.source_request_id === r.id)

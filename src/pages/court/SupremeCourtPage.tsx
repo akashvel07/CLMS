@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Gavel, Scale, Shield, ChevronRight, AlertTriangle, CheckCircle, FileText, Crown } from 'lucide-react';
+import { Shield, Scale, FileText, CheckCircle, Gavel, Crown, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DataStore } from '../../lib/dataStore';
 import type { BillItem } from '../../lib/dataStore';
@@ -63,9 +63,17 @@ const SupremeCourtPage: React.FC = () => {
   const [rulingSubmitting, setRulingSubmitting] = useState(false);
 
   // Suspend bill form
+  // Suspend bill form
   const [selectedBillId, setSelectedBillId] = useState('');
   const [suspendReason, setSuspendReason] = useState('');
   const [suspendSubmitting, setSuspendSubmitting] = useState(false);
+
+  // Create Case form
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCaseTitle, setNewCaseTitle] = useState('');
+  const [newCaseDesc, setNewCaseDesc] = useState('');
+  const [newCaseGrounds, setNewCaseGrounds] = useState('');
+  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [sc, so, bl, lw] = await Promise.all([
@@ -151,6 +159,24 @@ const SupremeCourtPage: React.FC = () => {
     await fetchData();
   };
 
+  const handleCreateCase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCaseTitle || !newCaseDesc || !newCaseGrounds || createSubmitting) return;
+    setCreateSubmitting(true);
+    await DataStore.escalateToSupreme({
+      title: newCaseTitle,
+      description: newCaseDesc,
+      grounds: newCaseGrounds,
+      appellant_name: 'Chief Justice ' + user.name,
+      appellant_role: 'chief_justice',
+      law_title: 'Direct Filing'
+    });
+    setNewCaseTitle(''); setNewCaseDesc(''); setNewCaseGrounds('');
+    setShowCreateModal(false);
+    setCreateSubmitting(false);
+    await fetchData();
+  };
+
   if (loading) {
     return (
       <div className="page-container">
@@ -195,13 +221,22 @@ const SupremeCourtPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {isChiefJustice && (
-              <button
-                id="btn-suspend-bill"
-                className="btn btn-danger btn-sm"
-                onClick={() => setShowSuspendModal(true)}
-              >
-                <Shield size={13} /> Suspend a Bill
-              </button>
+              <>
+                <button
+                  id="btn-create-case"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus size={13} /> File New Case
+                </button>
+                <button
+                  id="btn-suspend-bill"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => setShowSuspendModal(true)}
+                >
+                  <Shield size={13} /> Suspend a Bill
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -488,6 +523,54 @@ const SupremeCourtPage: React.FC = () => {
                 <Gavel size={14} /> {rulingSubmitting ? 'Issuing...' : 'Issue Final Ruling'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Case Modal ─────────────────────────────────────────────── */}
+      {showCreateModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)',
+        }} onClick={() => setShowCreateModal(false)}>
+          <div style={{
+            background: 'var(--bg-elevated)', borderRadius: 'var(--radius-xl)',
+            padding: 'var(--space-8)', width: '100%', maxWidth: 520,
+            border: '1.5px solid hsl(220,80%,50%)', boxShadow: '0 0 30px hsla(220,80%,50%,0.25)',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <Scale size={22} color="hsl(220,80%,60%)" />
+              <h2 style={{ margin: 0, fontSize: '1.15rem' }}>File New Supreme Court Case</h2>
+            </div>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 'var(--space-6)' }}>
+              Manually file a new case or appeal directly to the Supreme Court.
+            </p>
+            <form onSubmit={handleCreateCase} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div className="form-group">
+                <label className="form-label">Case Title *</label>
+                <input className="form-input" value={newCaseTitle} onChange={e => setNewCaseTitle(e.target.value)} placeholder="e.g. Constitutional Challenge to Bill X" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description *</label>
+                <textarea className="form-input" rows={3} value={newCaseDesc} onChange={e => setNewCaseDesc(e.target.value)} placeholder="Brief summary of the case..." required style={{ resize: 'vertical' }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Grounds for Appeal *</label>
+                <textarea className="form-input" rows={3} value={newCaseGrounds} onChange={e => setNewCaseGrounds(e.target.value)} placeholder="Constitutional basis for filing this case..." required style={{ resize: 'vertical' }} />
+              </div>
+              
+              <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-5)', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!newCaseTitle.trim() || !newCaseDesc.trim() || !newCaseGrounds.trim() || createSubmitting}
+                >
+                  <Plus size={14} /> {createSubmitting ? 'Filing...' : 'File Case'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

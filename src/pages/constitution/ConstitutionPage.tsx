@@ -8,7 +8,7 @@ import { DataStore } from '../../lib/dataStore';
 const ConstitutionPage: React.FC = () => {
   const { role } = useAuth();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [ministryFilter, setMinistryFilter] = useState('all');
   const { laws, loading } = useLaws();
 
@@ -83,8 +83,8 @@ const ConstitutionPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop Table */}
+        <div className="desktop-only" style={{ overflowX: 'auto' }}>
           <table>
             <thead>
               <tr>
@@ -157,6 +157,57 @@ const ConstitutionPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
+              Loading constitution table from database...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon"><BookOpen size={28} /></div>
+              <h3>No laws found</h3>
+              <p>Try adjusting your search or filters.</p>
+            </div>
+          ) : (
+            filtered.map(law => (
+              <div key={law.id} className="card" style={{ padding: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                  <span className="law-number">{law.law_number}</span>
+                  <span className={`badge badge-${law.status === 'active' ? 'enacted' : law.status === 'suspended' ? 'suspended' : 'rejected'}`}>{law.status}</span>
+                </div>
+                <h4 style={{ marginBottom: 'var(--space-2)' }}>{law.title}</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                  <MinistryTag name={law.ministry} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {law.approved_at ? format(new Date(law.approved_at), 'MMM dd, yyyy') : 'Recent'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: 'var(--space-3)' }}>
+                  <span className="badge badge-passed" style={{ fontSize: '0.68rem' }}>✓ {law.approved_by}</span>
+                  {role !== 'public' && (
+                    <div className="table-actions" style={{ gap: 'var(--space-2)' }}>
+                      {law.status === 'active' && (
+                        <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'suspended')} title="Suspend Law" style={{ color: 'var(--status-suspended)' }}>
+                          <PauseCircle size={14} />
+                        </button>
+                      )}
+                      {law.status === 'suspended' && (
+                        <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'active')} title="Restore Law" style={{ color: 'var(--status-passed)' }}>
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-icon" onClick={() => handleStatusUpdate(law.id, 'repealed')} title="Repeal Law" style={{ color: 'var(--status-rejected)' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

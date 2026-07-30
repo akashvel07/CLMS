@@ -229,30 +229,60 @@ const FinanceBudgetPage: React.FC = () => {
               </div>
             ) : (
               allocations.map(item => (
-                <div key={item.id} style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                  padding: '12px', background: 'var(--bg-default)', borderRadius: 6, border: '1px solid var(--border-subtle)',
-                  opacity: item.status === 'rejected' ? 0.6 : 1
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div key={item.id}>
+                  {/* Desktop view */}
+                  <div className="desktop-only" style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    padding: '12px', background: 'var(--bg-default)', borderRadius: 6, border: '1px solid var(--border-subtle)',
+                    opacity: item.status === 'rejected' ? 0.6 : 1
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span className="badge badge-secondary">{MINISTRIES.find(m => m.id === item.ministry_code)?.name}</span>
+                        {item.source_request_id && <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>From Request</span>}
+                        {item.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>Rejected</span>}
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 500, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
+                        {item.title}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
+                        ₹{item.amount.toLocaleString()}
+                      </div>
+                      {!isLocked && (
+                        <button className="btn btn-danger btn-sm" style={{ padding: 6 }} onClick={() => handleRemoveItem(item.id)}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile view */}
+                  <div className="mobile-only" style={{ 
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                    padding: '12px', background: 'var(--bg-default)', borderRadius: 6, border: '1px solid var(--border-subtle)',
+                    opacity: item.status === 'rejected' ? 0.6 : 1,
+                    minWidth: 0, overflowWrap: 'break-word', wordBreak: 'break-word'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span className="badge badge-secondary">{MINISTRIES.find(m => m.id === item.ministry_code)?.name}</span>
                       {item.source_request_id && <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>From Request</span>}
                       {item.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>Rejected</span>}
                     </div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 500, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 500, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
                       {item.title}
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
-                      ₹{item.amount.toLocaleString()}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
+                        ₹{item.amount.toLocaleString()}
+                      </div>
+                      {!isLocked && (
+                        <button className="btn btn-danger btn-sm" style={{ padding: '6px 12px' }} onClick={() => handleRemoveItem(item.id)}>
+                          <Trash2 size={14} /> Remove
+                        </button>
+                      )}
                     </div>
-                    {!isLocked && (
-                      <button className="btn btn-danger btn-sm" style={{ padding: 6 }} onClick={() => handleRemoveItem(item.id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    )}
                   </div>
                 </div>
               ))

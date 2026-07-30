@@ -188,7 +188,7 @@ const ParliamentPage: React.FC = () => {
             {role === 'ministry' ? 'Your Ministry Bills' : 'All Bills in Parliament'} ({sortedBills.length})
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+        <div className="grid-auto">
           {sortedBills.map(bill => {
             const cfg = STATUS_CONFIG[bill.status] ?? { label: bill.status, badge: 'badge-archived', color: 'hsl(220,15%,55%)' };
             const isActive = bill.id === activeBill?.id;
@@ -207,7 +207,7 @@ const ParliamentPage: React.FC = () => {
                     : 'var(--bg-card)',
                   cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                  gap: 4, minWidth: 160, maxWidth: 240, textAlign: 'left',
+                  gap: 4, textAlign: 'left', width: '100%',
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -239,24 +239,24 @@ const ParliamentPage: React.FC = () => {
             marginBottom: 'var(--space-6)',
             display: 'flex', alignItems: 'center', gap: 'var(--space-6)', flexWrap: 'wrap',
           }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ flex: 1, minWidth: 'min(100%, 200px)' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
                 {activeBill.status === 'voting' ? '🗳️ Currently Voting Bill'
                   : activeBill.status === 'awaiting_president' ? '👑 Awaiting Presidential Approval'
                   : activeBill.status === 'approved' || activeBill.status === 'enacted' ? '✅ President-Approved Law'
                   : '📄 Bill Details'}
               </div>
-              <h2 style={{ marginBottom: 6 }}>{activeBill.title}</h2>
+              <h2 style={{ marginBottom: 6, wordWrap: 'break-word', overflowWrap: 'break-word' }}>{activeBill.title}</h2>
               <p style={{ fontSize: '0.82rem' }}>{activeBill.description}</p>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', flexShrink: 0, flexWrap: 'wrap' }}>
+            <div className="grid-auto" style={{ width: '100%', gap: 'var(--space-4)', flexShrink: 0 }}>
               {[
                 { label: 'Bill No.', value: activeBill.bill_number },
                 { label: 'Ministry', value: activeBill.ministry },
                 { label: 'Status', value: STATUS_CONFIG[activeBill.status]?.label ?? activeBill.status },
               ].map(f => (
-                <div key={f.label} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>{f.value}</div>
+                <div key={f.label} style={{ textAlign: 'left', background: 'var(--bg-glass)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', wordBreak: 'break-word' }}>{f.value}</div>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>{f.label}</div>
                 </div>
               ))}
@@ -429,38 +429,65 @@ const ParliamentPage: React.FC = () => {
 
           {/* Vote Records Table (always shown if votes exist) */}
           {billVotes.length > 0 && (
-            <div className="table-container">
-              <div className="table-toolbar">
-                <div className="card-title">Recorded Member Votes</div>
-                <div className="badge badge-voting">{billVotes.length} votes cast</div>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Member / Official</th>
-                    <th>Role</th>
-                    <th>Vote</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {billVotes.map(v => (
-                    <tr key={v.id}>
-                      <td className="text-strong">{v.user_name}</td>
-                      <td><span className="badge badge-submitted" style={{ fontSize: '0.68rem' }}>{v.role}</span></td>
-                      <td>
-                        <span className={`badge badge-${v.vote === 'approve' ? 'passed' : v.vote === 'reject' ? 'rejected' : 'archived'}`}>
-                          {v.vote}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        {format(new Date(v.timestamp), 'hh:mm:ss a')}
-                      </td>
+            <>
+              {/* Desktop Table */}
+              <div className="desktop-only table-container">
+                <div className="table-toolbar">
+                  <div className="card-title">Recorded Member Votes</div>
+                  <div className="badge badge-voting">{billVotes.length} votes cast</div>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member / Official</th>
+                      <th>Role</th>
+                      <th>Vote</th>
+                      <th>Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {billVotes.map(v => (
+                      <tr key={v.id}>
+                        <td className="text-strong">{v.user_name}</td>
+                        <td><span className="badge badge-submitted" style={{ fontSize: '0.68rem' }}>{v.role}</span></td>
+                        <td>
+                          <span className={`badge badge-${v.vote === 'approve' ? 'passed' : v.vote === 'reject' ? 'rejected' : 'archived'}`}>
+                            {v.vote}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {format(new Date(v.timestamp), 'hh:mm:ss a')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mobile Cards */}
+              <div className="mobile-only" style={{ flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+                  <div className="card-title">Recorded Member Votes</div>
+                  <div className="badge badge-voting">{billVotes.length} votes cast</div>
+                </div>
+                {billVotes.map(v => (
+                  <div key={v.id} className="card" style={{ padding: 'var(--space-3)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span className="text-strong">{v.user_name}</span>
+                      <span className={`badge badge-${v.vote === 'approve' ? 'passed' : v.vote === 'reject' ? 'rejected' : 'archived'}`}>
+                        {v.vote}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="badge badge-submitted" style={{ fontSize: '0.68rem' }}>{v.role}</span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {format(new Date(v.timestamp), 'hh:mm:ss a')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}

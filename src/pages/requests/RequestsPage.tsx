@@ -231,7 +231,7 @@ const RequestsPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="desktop-only" style={{ overflowX: 'auto' }}>
           <table>
             <thead>
               <tr>
@@ -300,6 +300,58 @@ const RequestsPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state" style={{ padding: 'var(--space-8)' }}>
+              <MessageSquare size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+              <h3>No requests found</h3>
+            </div>
+          ) : (
+            filtered.map(r => (
+              <div key={r.id} className="card" style={{ padding: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                  <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>{r.id}</span>
+                  <span className={`badge badge-${r.status === 'approved' ? 'passed' : r.status === 'rejected' ? 'rejected' : r.status === 'returned' ? 'suspended' : 'submitted'}`}>{r.status}</span>
+                </div>
+                <h4 style={{ margin: '0 0 var(--space-2) 0', fontSize: '0.95rem' }}>{r.title}</h4>
+                
+                <div className="grid-2" style={{ gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>From</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 500 }}>{r.from}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>To</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 500 }}>{r.to}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Priority & Amount</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className={`badge badge-${r.priority}`} style={{ fontSize: '0.6rem' }}>{r.priority}</span>
+                      {r.amount > 0 && <span>₹{r.amount.toLocaleString()}</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Date</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 500 }}>{r.created_at ? format(new Date(r.created_at), 'MMM dd') : 'Recent'}</div>
+                  </div>
+                </div>
+
+                {role !== 'public' && (
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(r.id, 'approved')} style={{ flex: 1, color: 'var(--status-passed)' }} disabled={actionLoading}><Check size={14} /> Approve</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(r.id, 'rejected')} style={{ flex: 1, color: 'var(--status-rejected)' }} disabled={actionLoading}><X size={14} /> Reject</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(r.id, 'returned')} style={{ flex: 1, color: 'var(--status-suspended)' }} disabled={actionLoading}><RotateCcw size={14} /> Return</button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

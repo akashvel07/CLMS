@@ -220,6 +220,7 @@ p { color: var(--text-secondary); line-height: 1.7; }
 
 .main-content {
   flex: 1;
+  min-width: 0;
   margin-left: var(--sidebar-width);
   padding-top: var(--header-height);
   transition: margin-left var(--transition-base);
@@ -563,6 +564,9 @@ p { color: var(--text-secondary); line-height: 1.7; }
   backdrop-filter: blur(12px);
   transition: all var(--transition-base);
   box-shadow: var(--shadow-card);
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .card:hover {
@@ -1373,6 +1377,17 @@ tbody td.text-strong { color: var(--text-primary); font-weight: 500; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-6); }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-5); }
+.mobile-only { display: none !important; }
+
+.layout-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.layout-split.active {
+  grid-template-columns: 1fr 400px;
+}
 
 @media (max-width: 1200px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -1380,13 +1395,21 @@ tbody td.text-strong { color: var(--text-primary); font-weight: 500; }
 }
 
 @media (max-width: 768px) {
-  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .grid-4, .grid-3, .grid-2, .grid-auto { grid-template-columns: 1fr; }
   .page-container { padding: var(--space-4); }
   .main-content { margin-left: 0 !important; }
+  .header { left: 0 !important; padding: 0 var(--space-4); }
+  .header-breadcrumb { display: none; }
   .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
   .sidebar.mobile-open { transform: translateX(0); }
   .mobile-menu-btn { display: flex; }
   .sidebar-backdrop.show { display: block; }
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+  .layout-split.active {
+    display: flex;
+    flex-direction: column-reverse;
+  }
 }
 
 /* ═══════════════════════════════════════════════

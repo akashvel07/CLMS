@@ -3,6 +3,7 @@ import { Tv, Radio, AlertTriangle, Scale, Crown, Building2, Vote, Globe, Refresh
 import { DataStore } from '../../lib/dataStore';
 import type { NewsFeedItem } from '../../types/database';
 import { format, formatDistanceToNow } from 'date-fns';
+import MobileNewsView from './MobileNewsView';
 
 // ─── Category Config ──────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ const NewsCard: React.FC<{ item: NewsFeedItem; featured?: boolean }> = ({ item, 
           padding: 'var(--space-3) var(--space-6)',
           background: item.priority === 'breaking' ? 'hsla(0,85%,30%,0.5)' : 'hsla(220,80%,30%,0.3)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+          display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap',
         }}>
           {item.priority === 'breaking' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -125,7 +126,7 @@ const NewsCard: React.FC<{ item: NewsFeedItem; featured?: boolean }> = ({ item, 
           </span>
         </div>
         <div style={{ padding: 'var(--space-8)' }}>
-          <h2 style={{ margin: '0 0 var(--space-4) 0', fontSize: '1.5rem', lineHeight: 1.3, color: 'var(--text-primary)' }}>{item.headline}</h2>
+          <h2 style={{ margin: '0 0 var(--space-4) 0', fontSize: '1.5rem', lineHeight: 1.3, color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.headline}</h2>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>{item.body}</p>
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             <span>By <strong style={{ color: 'var(--text-secondary)' }}>{item.posted_by}</strong></span>
@@ -228,16 +229,17 @@ const NewsPage: React.FC = () => {
   const categories: NewsCategory[] = ['all', 'parliament', 'court', 'supreme_court', 'president', 'ministry', 'system'];
 
   return (
-    <div className="page-container" style={{ padding: 0, maxWidth: '100%' }}>
+    <>
+      <div className="desktop-only page-container" style={{ padding: 0, maxWidth: '100%' }}>
       {/* TV Channel Header */}
       <div style={{
         background: 'linear-gradient(135deg, #0a0015 0%, #050030 50%, #000a20 100%)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: 'var(--space-4) var(--space-8)',
-        display: 'flex', alignItems: 'center', gap: 'var(--space-6)', flexWrap: 'wrap',
+        padding: 'var(--space-4)',
+        display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap',
       }}>
         {/* Channel branding */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
           <div style={{
             position: 'relative',
             width: 52, height: 52, borderRadius: 12,
@@ -258,7 +260,7 @@ const NewsPage: React.FC = () => {
             <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', lineHeight: 1 }}>
               CLMS <span style={{ color: 'hsl(0,85%,55%)' }}>NEWS</span> 24
             </div>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', wordBreak: 'break-word' }}>
               Official Government Broadcasting Channel
             </div>
           </div>
@@ -285,7 +287,7 @@ const NewsPage: React.FC = () => {
       <NewsTicker items={news} />
 
       {/* Main content area */}
-      <div style={{ padding: 'var(--space-6) var(--space-8)' }}>
+      <div style={{ padding: 'var(--space-4)' }}>
 
         {/* Controls bar */}
         <div style={{
@@ -377,11 +379,7 @@ const NewsPage: React.FC = () => {
             </div>
 
             {/* News Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: 'var(--space-4)',
-            }}>
+            <div className="grid-auto" style={{ gap: 'var(--space-4)' }}>
               {gridItems.map(item => (
                 <NewsCard key={item.id} item={item} />
               ))}
@@ -402,7 +400,21 @@ const NewsPage: React.FC = () => {
           to { transform: rotate(360deg); }
         }
       `}</style>
-    </div>
+      </div>
+
+      <MobileNewsView
+        news={news}
+        loading={loading}
+        category={category}
+        setCategory={setCategory}
+        fetchNews={fetchNews}
+        refreshing={refreshing}
+        time={time}
+        categories={categories}
+        CATEGORY_CONFIG={CATEGORY_CONFIG}
+        PRIORITY_CONFIG={PRIORITY_CONFIG}
+      />
+    </>
   );
 };
 

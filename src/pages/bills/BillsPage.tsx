@@ -78,7 +78,7 @@ const BillsPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 400px' : '1fr', gap: 'var(--space-6)' }}>
+      <div className={`layout-split ${selected ? 'active' : ''}`}>
         {/* Bills Table */}
         <div className="table-container">
           <div className="table-toolbar">
@@ -100,51 +100,87 @@ const BillsPage: React.FC = () => {
               Loading bills from database...
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Bill No.</th>
-                    <th>Title</th>
-                    <th>Ministry</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
+            <>
+              {/* Desktop Table */}
+              <div className="desktop-only" style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
-                        <FileText size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                        <div>No bills found. {role !== 'public' && <Link to="/bills/new" style={{ color: 'var(--accent-primary)' }}>Create the first bill →</Link>}</div>
-                      </td>
+                      <th>Bill No.</th>
+                      <th>Title</th>
+                      <th>Ministry</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th></th>
                     </tr>
-                  ) : filtered.map(bill => (
-                    <tr
-                      key={bill.id}
-                      onClick={() => setSelectedId(selectedId === bill.id ? null : bill.id)}
-                      style={{ cursor: 'pointer', background: selectedId === bill.id ? 'var(--bg-glass)' : undefined }}
-                    >
-                      <td><span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span></td>
-                      <td className="text-strong" style={{ maxWidth: 200 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span className="truncate" style={{ display: 'block' }}>{bill.title}</span>
-                          {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
-                          {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
-                        </div>
-                      </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</td>
-                      <td><span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span></td>
-                      <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
+                          <FileText size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                          <div>No bills found. {role !== 'public' && <Link to="/bills/new" style={{ color: 'var(--accent-primary)' }}>Create the first bill →</Link>}</div>
+                        </td>
+                      </tr>
+                    ) : filtered.map(bill => (
+                      <tr
+                        key={bill.id}
+                        onClick={() => setSelectedId(selectedId === bill.id ? null : bill.id)}
+                        style={{ cursor: 'pointer', background: selectedId === bill.id ? 'var(--bg-glass)' : undefined }}
+                      >
+                        <td><span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span></td>
+                        <td className="text-strong" style={{ maxWidth: 200 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span className="truncate" style={{ display: 'block' }}>{bill.title}</span>
+                            {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
+                            {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
+                          </div>
+                        </td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</td>
+                        <td><span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span></td>
+                        <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {bill.created_at ? format(new Date(bill.created_at), 'MMM dd') : 'Today'}
+                        </td>
+                        <td><ChevronRight size={14} color="var(--text-muted)" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+                {filtered.length === 0 ? (
+                  <div className="empty-state">
+                    <FileText size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                    <div>No bills found. {role !== 'public' && <Link to="/bills/new" style={{ color: 'var(--accent-primary)' }}>Create the first bill →</Link>}</div>
+                  </div>
+                ) : filtered.map(bill => (
+                  <div
+                    key={bill.id}
+                    className="card"
+                    onClick={() => setSelectedId(selectedId === bill.id ? null : bill.id)}
+                    style={{ cursor: 'pointer', padding: 'var(--space-4)', border: selectedId === bill.id ? '1px solid var(--accent-primary)' : undefined }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                      <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span>
+                      <span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{bill.title}</h4>
+                      {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
+                      {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         {bill.created_at ? format(new Date(bill.created_at), 'MMM dd') : 'Today'}
-                      </td>
-                      <td><ChevronRight size={14} color="var(--text-muted)" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -158,7 +194,7 @@ const BillsPage: React.FC = () => {
             <h3 style={{ marginBottom: 'var(--space-2)' }}>{selected.title}</h3>
             <p style={{ fontSize: '0.82rem', marginBottom: 'var(--space-5)' }}>{selected.description}</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
+            <div className="grid-2" style={{ gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
               {[
                 { label: 'Bill Number', value: selected.bill_number },
                 { label: 'Ministry', value: selected.ministry },
@@ -169,7 +205,7 @@ const BillsPage: React.FC = () => {
               ].map(f => (
                 <div key={f.label}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{f.label}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>{f.value}</div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500, wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{f.value}</div>
                 </div>
               ))}
             </div>

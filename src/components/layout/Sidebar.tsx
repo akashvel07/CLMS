@@ -23,10 +23,11 @@ const ministriesNav = [
 
 interface SidebarProps {
   collapsed: boolean;
+  mobileOpen?: boolean;
   onToggle: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, mobileOpen, onToggle }) => {
   const { user, role, signOut } = useAuth();
   const location = useLocation();
   const [ministriesOpen, setMinistriesOpen] = useState(
@@ -50,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     .slice(0, 2) ?? '?';
 
   return (
-    <nav className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+    <nav className={`sidebar${collapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
       <div className="sidebar-logo">
         <div className="sidebar-logo-mark">CL</div>
         <div className="sidebar-logo-text">

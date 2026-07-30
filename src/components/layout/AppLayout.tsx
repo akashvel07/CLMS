@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const AppLayout: React.FC = () => {
   const { loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (loading) {
     return (
@@ -19,9 +20,22 @@ const AppLayout: React.FC = () => {
 
   return (
     <div className="app-shell">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+      {/* Mobile backdrop */}
+      <div 
+        className={`sidebar-backdrop ${mobileOpen ? 'show' : ''}`}
+        onClick={() => setMobileOpen(false)}
+      />
+      
+      <Sidebar 
+        collapsed={collapsed} 
+        mobileOpen={mobileOpen}
+        onToggle={() => setCollapsed(!collapsed)} 
+      />
       <div className={`main-content${collapsed ? ' sidebar-collapsed' : ''}`}>
-        <Header sidebarCollapsed={collapsed} />
+        <Header 
+          sidebarCollapsed={collapsed} 
+          onMobileToggle={() => setMobileOpen(!mobileOpen)} 
+        />
         <main style={{ minHeight: 'calc(100vh - var(--header-height))' }}>
           <Outlet />
         </main>

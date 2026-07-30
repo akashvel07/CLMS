@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, ChevronDown, Check, User, Shield, Building2, Crown, Globe } from 'lucide-react';
+import { Bell, ChevronDown, Check, User, Shield, Building2, Crown, Globe, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -26,6 +26,7 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
+  onMobileToggle?: () => void;
 }
 
 const MOCK_NOTIFS = [
@@ -34,7 +35,7 @@ const MOCK_NOTIFS = [
   { id: '3', title: 'Request Approved', body: 'Your budget request was approved by Finance Ministry.', read: true, created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
 ];
 
-const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
+const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, onMobileToggle }) => {
   const location = useLocation();
   const { user, role, presetProfiles, switchProfile } = useAuth();
 
@@ -72,6 +73,9 @@ const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
   return (
     <header className={`header${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <div className="header-left">
+        <button className="mobile-menu-btn" onClick={onMobileToggle}>
+          <Menu size={20} />
+        </button>
         <nav className="header-breadcrumb">
           {crumbs.map((crumb, i) => (
             <React.Fragment key={i}>

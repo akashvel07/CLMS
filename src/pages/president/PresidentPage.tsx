@@ -24,7 +24,8 @@ const PresidentPage: React.FC = () => {
   const { laws } = useLaws();
   const { budgets } = useBudgets();
 
-  const isBudgetApprovalDay = new Date().getDate() >= 25;
+  const currentDay = new Date().getDate();
+  const isBudgetApprovalDay = currentDay >= 1 && currentDay <= 5;
 
   // Filter pending approvals (Bills awaiting president + Pending Requests)
   const pendingBills = bills.filter(b => b.status === 'awaiting_president' || b.status === 'suspended' || b.status === 'voting');
@@ -75,12 +76,93 @@ const PresidentPage: React.FC = () => {
     await DataStore.updateRequestStatus(id, 'returned', 'returned');
   };
 
-  const handleApproveBudget = async (id: string) => {
-    await DataStore.updateBudgetStatus(id, 'approved');
+  const handleApproveBudget = async (id: string, updatedAllocations: import('../../types/database').BudgetLineItem[]) => {
+    await DataStore.updateBudgetStatus(id, 'approved', updatedAllocations);
   };
 
-  const handleRejectBudget = async (id: string) => {
-    await DataStore.updateBudgetStatus(id, 'rejected');
+  const handleRejectBudget = async (id: string, updatedAllocations: import('../../types/database').BudgetLineItem[]) => {
+    await DataStore.updateBudgetStatus(id, 'rejected', updatedAllocations);
+  };
+
+  const BudgetApprovalCard = ({ budget, isApprovalDay, onApprove, onReject }: any) => {
+    const [allocations, setAllocations] = useState<import('../../types/database').BudgetLineItem[]>(budget.allocations || []);
+
+    const toggleReject = (itemId: string) => {
+      setAllocations(prev => prev.map(item => 
+        item.id === itemId 
+          ? { ...item, status: item.status === 'rejected' ? 'pending' : 'rejected' } 
+          : item
+      ));
+    };
+
+    const totalApproved = allocations.reduce((sum, item) => sum + (item.status !== 'rejected' ? item.amount : 0), 0);
+
+    return (
+      <div style={{
+        background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)',
+        border: '1px solid var(--border-subtle)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Budget Allocation for Month {budget.month}/{budget.year}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From Finance Ministry</div>
+          </div>
+          <span className="badge badge-warning" style={{ fontSize: '0.62rem' }}>Pending</span>
+        </div>
+        
+        <div style={{ marginBottom: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {allocations.map(item => (
+            <div key={item.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+              padding: '8px 12px', background: 'var(--bg-default)', borderRadius: 6,
+              opacity: item.status === 'rejected' ? 0.6 : 1,
+              border: item.status === 'rejected' ? '1px solid var(--status-rejected)' : '1px solid var(--border-subtle)'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{item.title}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.ministry_code}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
+                  ₹{item.amount.toLocaleString()}
+                </span>
+                {isApprovalDay && (
+                  <button 
+                    className={`btn btn-sm ${item.status === 'rejected' ? 'btn-secondary' : 'btn-danger'}`} 
+                    style={{ padding: '4px 8px' }}
+                    onClick={() => toggleReject(item.id)}
+                  >
+                    {item.status === 'rejected' ? 'Restore' : 'Reject'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)', padding: '8px 12px', background: 'var(--bg-default)', borderRadius: 6 }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Approved Total:</span>
+          <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--status-passed)' }}>₹{totalApproved.toLocaleString()}</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          {isApprovalDay ? (
+            <>
+              <button className="btn btn-success btn-sm" onClick={() => onApprove(budget.id, allocations)} style={{ flex: 1, justifyContent: 'center' }}>
+                <CheckCircle size={14} /> Approve Final
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => onReject(budget.id, allocations.map(a => ({...a, status: 'rejected'})))} style={{ flex: 1, justifyContent: 'center' }}>
+                <XCircle size={14} /> Reject Entire Budget
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: '0.75rem', color: 'var(--status-suspended)', padding: '4px 0', width: '100%', textAlign: 'center' }}>
+              Approval opens between the 1st and 5th of the month.
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -260,34 +342,13 @@ const PresidentPage: React.FC = () => {
 
                 {/* Pending Budgets */}
                 {pendingBudgets.map(b => (
-                  <div key={b.id} style={{
-                    background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)',
-                    border: '1px solid var(--border-subtle)',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                      <div>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Budget Allocation for Month {b.month}/{b.year}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Budget · Finance</div>
-                      </div>
-                      <span className="badge badge-warning" style={{ fontSize: '0.62rem' }}>Pending</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                      {isBudgetApprovalDay ? (
-                        <>
-                          <button className="btn btn-success btn-sm" onClick={() => handleApproveBudget(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
-                            <CheckCircle size={12} /> Approve
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleRejectBudget(b.id)} style={{ flex: 1, justifyContent: 'center', fontSize: '0.72rem' }}>
-                            <XCircle size={12} /> Reject
-                          </button>
-                        </>
-                      ) : (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--status-suspended)', padding: '4px 0' }}>
-                          Approval opens on the 25th.
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <BudgetApprovalCard 
+                    key={b.id} 
+                    budget={b} 
+                    isApprovalDay={isBudgetApprovalDay}
+                    onApprove={handleApproveBudget}
+                    onReject={handleRejectBudget}
+                  />
                 ))}
               </div>
             )}

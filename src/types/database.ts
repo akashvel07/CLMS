@@ -141,11 +141,20 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface BudgetLineItem {
+  id: string;
+  ministry_code: string;
+  title: string;
+  amount: number;
+  source_request_id?: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
 export interface BudgetAllocation {
   id: string;
   month: number;
   year: number;
-  allocations: Record<string, number>;
+  allocations: BudgetLineItem[];
   status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
   created_at: string;
 }

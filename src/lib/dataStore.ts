@@ -5,7 +5,7 @@
  */
 import { supabase } from './supabase';
 const db = supabase as any;
-import type { BillStatus, Role } from '../types/database';
+import type { BillStatus, Role, CourtCase, CourtOrder, SupremeCase, SupremeOrder, NewsFeedItem, CourtVerdict, SupremeRuling } from '../types/database';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +82,11 @@ export const initRealtimeSync = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'laws' }, notifyListeners)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'parliament_votes' }, notifyListeners)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'court_cases' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'court_orders' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'supreme_court_cases' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'supreme_court_orders' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'news_feed' }, notifyListeners)
     .subscribe();
 };
 
@@ -456,4 +461,325 @@ export const DataStore = {
     }
     notifyListeners();
   },
+
+  // ─── NEWS FEED ─────────────────────────────────────────────────────────────────────
+
+  getNews: async (category?: string, limit = 50): Promise<NewsFeedItem[]> => {
+    let query = db
+      .from('news_feed')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+    const { data, error } = await query;
+    if (error) { console.error('[DataStore] getNews error:', error); return []; }
+    return (data ?? []) as NewsFeedItem[];
+  },
+
+  postNews: async (item: {
+    category: NewsFeedItem['category'];
+    headline: string;
+    body: string;
+    priority?: NewsFeedItem['priority'];
+    ref_type?: string;
+    ref_id?: string;
+    posted_by?: string;
+  }): Promise<void> => {
+    const { error } = await db.from('news_feed').insert({
+      category: item.category,
+      headline: item.headline,
+      body: item.body,
+      priority: item.priority ?? 'normal',
+      ref_type: item.ref_type ?? '',
+      ref_id: item.ref_id ?? '',
+      posted_by: item.posted_by ?? 'System',
+    });
+    if (error) console.error('[DataStore] postNews error:', error);
+    notifyListeners();
+  },
+
+  // ─── COURT CASES (High Court) ───────────────────────────────────────────────────────
+
+  getCourtCases: async (): Promise<CourtCase[]> => {
+    const { data, error } = await db
+      .from('court_cases')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getCourtCases error:', error); return []; }
+    return (data ?? []) as CourtCase[];
+  },
+
+  fileCourtCase: async (params: {
+    title: string;
+    description: string;
+    law_id?: string;
+    law_title: string;
+    case_type: CourtCase['case_type'];
+    filed_by_name: string;
+    filed_by_role: string;
+  }): Promise<CourtCase | null> => {
+    // Generate case number
+    const year = new Date().getFullYear();
+    const { count } = await db.from('court_cases').select('*', { count: 'exact', head: true });
+    const seq = String((count ?? 0) + 1).padStart(4, '0');
+    const case_number = `HC-${year}-${seq}`;
+
+    const { data, error } = await db
+      .from('court_cases')
+      .insert({
+        case_number,
+        title: params.title,
+        description: params.description,
+        law_id: params.law_id || null,
+        law_title: params.law_title,
+        case_type: params.case_type,
+        filed_by_name: params.filed_by_name,
+        filed_by_role: params.filed_by_role,
+        status: 'filed',
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] fileCourtCase error:', error); return null; }
+
+    // Post news
+    await DataStore.postNews({
+      category: 'court',
+      headline: `New Case Filed: ${params.title}`,
+      body: `Case ${case_number} has been filed in the High Court by ${params.filed_by_name}. Type: ${params.case_type}. Regarding: ${params.law_title || 'General matter'}.`,
+      priority: 'normal',
+      ref_type: 'court_case',
+      ref_id: data.id,
+      posted_by: params.filed_by_name,
+    });
+
+    notifyListeners();
+    return data as CourtCase;
+  },
+
+  updateCourtCaseStatus: async (
+    caseId: string,
+    status: CourtCase['status'],
+    justice_notes?: string
+  ): Promise<void> => {
+    const updatePayload: any = { status };
+    if (justice_notes !== undefined) updatePayload.justice_notes = justice_notes;
+    const { error } = await db.from('court_cases').update(updatePayload).eq('id', caseId);
+    if (error) { console.error('[DataStore] updateCourtCaseStatus error:', error); return; }
+    notifyListeners();
+  },
+
+  getCourtOrders: async (): Promise<CourtOrder[]> => {
+    const { data, error } = await db
+      .from('court_orders')
+      .select('*')
+      .order('issued_at', { ascending: false });
+    if (error) { console.error('[DataStore] getCourtOrders error:', error); return []; }
+    return (data ?? []) as CourtOrder[];
+  },
+
+  issueCourtOrder: async (params: {
+    case_id: string;
+    case_number: string;
+    case_title: string;
+    verdict: CourtVerdict;
+    verdict_details: string;
+    law_impact: CourtOrder['law_impact'];
+    announcement: string;
+    issued_by: string;
+    law_id?: string;
+  }): Promise<CourtOrder | null> => {
+    const { data, error } = await db
+      .from('court_orders')
+      .insert({
+        case_id: params.case_id,
+        case_number: params.case_number,
+        case_title: params.case_title,
+        verdict: params.verdict,
+        verdict_details: params.verdict_details,
+        law_impact: params.law_impact,
+        announcement: params.announcement,
+        issued_by: params.issued_by,
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] issueCourtOrder error:', error); return null; }
+
+    // Update case status to order_issued
+    await DataStore.updateCourtCaseStatus(params.case_id, 'order_issued');
+
+    // Apply law impact if any
+    if (params.law_id && params.law_impact !== 'none') {
+      if (params.law_impact === 'suspended') {
+        await DataStore.updateLawStatus(params.law_id, 'suspended');
+      } else if (params.law_impact === 'repealed') {
+        await DataStore.updateLawStatus(params.law_id, 'repealed');
+      }
+    }
+
+    // Post breaking news
+    await DataStore.postNews({
+      category: 'court',
+      headline: `⚠️ High Court Order Issued — ${params.case_title}`,
+      body: `Verdict: ${params.verdict.toUpperCase()}. ${params.announcement}`,
+      priority: 'high',
+      ref_type: 'court_order',
+      ref_id: data.id,
+      posted_by: params.issued_by,
+    });
+
+    notifyListeners();
+    return data as CourtOrder;
+  },
+
+  // ─── SUPREME COURT ──────────────────────────────────────────────────────────────────────
+
+  getSupremeCases: async (): Promise<SupremeCase[]> => {
+    const { data, error } = await db
+      .from('supreme_court_cases')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getSupremeCases error:', error); return []; }
+    return (data ?? []) as SupremeCase[];
+  },
+
+  escalateToSupreme: async (params: {
+    original_case_id?: string;
+    original_order_id?: string;
+    title: string;
+    description: string;
+    law_id?: string;
+    law_title: string;
+    appellant_name: string;
+    appellant_role: string;
+    grounds: string;
+  }): Promise<SupremeCase | null> => {
+    const year = new Date().getFullYear();
+    const { count } = await db.from('supreme_court_cases').select('*', { count: 'exact', head: true });
+    const seq = String((count ?? 0) + 1).padStart(4, '0');
+    const sc_case_number = `SC-${year}-${seq}`;
+
+    const { data, error } = await db
+      .from('supreme_court_cases')
+      .insert({
+        sc_case_number,
+        original_case_id: params.original_case_id || null,
+        original_order_id: params.original_order_id || null,
+        title: params.title,
+        description: params.description,
+        law_id: params.law_id || null,
+        law_title: params.law_title,
+        appellant_name: params.appellant_name,
+        appellant_role: params.appellant_role,
+        grounds: params.grounds,
+        status: 'filed',
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] escalateToSupreme error:', error); return null; }
+
+    // Mark HC case as appealed if linked
+    if (params.original_case_id) {
+      await DataStore.updateCourtCaseStatus(params.original_case_id, 'appealed_to_supreme');
+    }
+
+    // Post news
+    await DataStore.postNews({
+      category: 'supreme_court',
+      headline: `Appeal Filed in Supreme Court: ${params.title}`,
+      body: `Case ${sc_case_number} filed by ${params.appellant_name}. Grounds: ${params.grounds}`,
+      priority: 'high',
+      ref_type: 'sc_case',
+      ref_id: data.id,
+      posted_by: params.appellant_name,
+    });
+
+    notifyListeners();
+    return data as SupremeCase;
+  },
+
+  updateSupremeCaseStatus: async (
+    scCaseId: string,
+    status: SupremeCase['status'],
+    chief_justice_notes?: string
+  ): Promise<void> => {
+    const updatePayload: any = { status };
+    if (chief_justice_notes !== undefined) updatePayload.chief_justice_notes = chief_justice_notes;
+    const { error } = await db.from('supreme_court_cases').update(updatePayload).eq('id', scCaseId);
+    if (error) { console.error('[DataStore] updateSupremeCaseStatus error:', error); return; }
+    notifyListeners();
+  },
+
+  getSupremeOrders: async (): Promise<SupremeOrder[]> => {
+    const { data, error } = await db
+      .from('supreme_court_orders')
+      .select('*')
+      .order('issued_at', { ascending: false });
+    if (error) { console.error('[DataStore] getSupremeOrders error:', error); return []; }
+    return (data ?? []) as SupremeOrder[];
+  },
+
+  issueSupremeOrder: async (params: {
+    sc_case_id: string;
+    sc_case_number: string;
+    case_title: string;
+    ruling: SupremeRuling;
+    ruling_details: string;
+    announcement: string;
+    issued_by: string;
+    law_id?: string;
+    law_impact?: 'none' | 'suspended' | 'repealed' | 'maintained';
+    suspended_bill_id?: string;
+    suspended_bill_title?: string;
+  }): Promise<SupremeOrder | null> => {
+    const { data, error } = await db
+      .from('supreme_court_orders')
+      .insert({
+        sc_case_id: params.sc_case_id,
+        sc_case_number: params.sc_case_number,
+        case_title: params.case_title,
+        ruling: params.ruling,
+        ruling_details: params.ruling_details,
+        announcement: params.announcement,
+        issued_by: params.issued_by,
+        suspended_bill_id: params.suspended_bill_id || null,
+        suspended_bill_title: params.suspended_bill_title || '',
+      })
+      .select()
+      .single();
+    if (error) { console.error('[DataStore] issueSupremeOrder error:', error); return null; }
+
+    // Update SC case status
+    await DataStore.updateSupremeCaseStatus(params.sc_case_id, 'final_order_issued');
+
+    // Apply law impact if any
+    if (params.law_id && params.law_impact && params.law_impact !== 'none') {
+      if (params.law_impact === 'suspended') {
+        await DataStore.updateLawStatus(params.law_id, 'suspended');
+      } else if (params.law_impact === 'repealed') {
+        await DataStore.updateLawStatus(params.law_id, 'repealed');
+      }
+    }
+
+    // Bill suspension by Chief Justice
+    if (params.suspended_bill_id) {
+      await db.from('bills').update({ status: 'suspended' }).eq('id', params.suspended_bill_id);
+    }
+
+    // Post breaking news
+    await DataStore.postNews({
+      category: 'supreme_court',
+      headline: `🟥 SUPREME COURT FINAL RULING — ${params.case_title}`,
+      body: `LANDMARK RULING by ${params.issued_by}: ${params.ruling.toUpperCase()}. ${params.announcement}`,
+      priority: 'breaking',
+      ref_type: 'sc_order',
+      ref_id: data.id,
+      posted_by: params.issued_by,
+    });
+
+    notifyListeners();
+    return data as SupremeOrder;
+  },
 };
+

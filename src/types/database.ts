@@ -1,5 +1,5 @@
 // Database type definitions for Supabase
-export type Role = 'president' | 'ministry' | 'public';
+export type Role = 'president' | 'ministry' | 'public' | 'justice' | 'chief_justice';
 export type BillStatus =
   | 'draft'
   | 'submitted'
@@ -156,6 +156,97 @@ export interface BudgetAllocation {
   year: number;
   allocations: BudgetLineItem[];
   status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+// ─── Court Types ────────────────────────────────────────────────────────────
+
+export type CourtCaseStatus =
+  | 'filed'
+  | 'approved_for_trial'
+  | 'in_trial'
+  | 'order_issued'
+  | 'closed'
+  | 'appealed_to_supreme'
+  | 'rejected';
+
+export type CourtCaseType = 'challenge' | 'discussion' | 'contempt' | 'petition';
+export type CourtVerdict = 'upheld' | 'rejected' | 'maintained' | 'modified' | 'dismissed';
+export type SupremeCaseStatus = 'filed' | 'in_review' | 'final_order_issued' | 'closed' | 'dismissed';
+export type SupremeRuling = 'upheld' | 'overturned' | 'modified' | 'dismissed' | 'remanded';
+export type NewsCategory = 'parliament' | 'court' | 'supreme_court' | 'president' | 'ministry' | 'system';
+export type NewsPriority = 'breaking' | 'high' | 'normal' | 'low';
+
+export interface CourtCase {
+  id: string;
+  case_number: string;
+  title: string;
+  description: string;
+  law_id?: string;
+  law_title: string;
+  case_type: CourtCaseType;
+  filed_by_name: string;
+  filed_by_role: string;
+  status: CourtCaseStatus;
+  justice_notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourtOrder {
+  id: string;
+  case_id: string;
+  case_number: string;
+  case_title: string;
+  verdict: CourtVerdict;
+  verdict_details: string;
+  law_impact: 'none' | 'suspended' | 'repealed' | 'maintained';
+  announcement: string;
+  issued_by: string;
+  issued_at: string;
+}
+
+export interface SupremeCase {
+  id: string;
+  sc_case_number: string;
+  original_case_id?: string;
+  original_order_id?: string;
+  title: string;
+  description: string;
+  law_id?: string;
+  law_title: string;
+  appellant_name: string;
+  appellant_role: string;
+  grounds: string;
+  status: SupremeCaseStatus;
+  chief_justice_notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupremeOrder {
+  id: string;
+  sc_case_id: string;
+  sc_case_number: string;
+  case_title: string;
+  ruling: SupremeRuling;
+  ruling_details: string;
+  suspended_bill_id?: string;
+  suspended_bill_title?: string;
+  announcement: string;
+  issued_by: string;
+  issued_at: string;
+}
+
+export interface NewsFeedItem {
+  id: string;
+  category: NewsCategory;
+  headline: string;
+  body: string;
+  ref_type: string;
+  ref_id: string;
+  priority: NewsPriority;
+  posted_by: string;
   created_at: string;
 }
 

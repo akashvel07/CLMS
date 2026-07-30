@@ -4,7 +4,8 @@ import {
   LayoutDashboard, BookOpen, FileText, Vote, Crown, Building2,
   HeartPulse, GraduationCap, DollarSign, Briefcase, Monitor,
   Star, Gamepad2, Globe2, MessageSquare, Settings, ChevronLeft,
-  ChevronRight, LogOut, Bell, Heart, BadgeDollarSign, Laptop
+  ChevronRight, LogOut, Bell, Heart, BadgeDollarSign, Laptop,
+  Scale, Landmark, Tv
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -148,6 +149,23 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               <span className="nav-label">Public Dashboard</span>
             </NavLink>
           )}
+        </div>
+
+        {/* Judiciary & Media */}
+        <div className="nav-section">
+          {!collapsed && <div className="nav-section-label">Judiciary & Media</div>}
+          <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/court">
+            <Scale className="nav-icon" size={18} />
+            <span className="nav-label">High Court</span>
+          </NavLink>
+          <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/supreme-court">
+            <Landmark className="nav-icon" size={18} />
+            <span className="nav-label">Supreme Court</span>
+          </NavLink>
+          <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/news">
+            <Tv className="nav-icon" size={18} />
+            <span className="nav-label">News Channel</span>
+          </NavLink>
         </div>
 
         {/* Settings */}

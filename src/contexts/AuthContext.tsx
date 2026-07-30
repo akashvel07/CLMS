@@ -118,6 +118,28 @@ export const PRESET_PROFILES: PresetProfile[] = [
     icon: '👥',
     description: 'Open transparency & public records',
   },
+  {
+    id: 'justice-high-court',
+    name: 'Hon. Justice Riya Sharma',
+    email: 'justice@clms.gov',
+    role: 'justice' as any,
+    ministry_id: null,
+    created_at: '2024-01-01T00:00:00Z',
+    label: 'High Court Justice',
+    icon: '⚖️',
+    description: 'Presides over High Court — approves cases, issues orders',
+  },
+  {
+    id: 'chief-justice-supreme',
+    name: 'Chief Justice Marcus Webb',
+    email: 'chief_justice@clms.gov',
+    role: 'chief_justice' as any,
+    ministry_id: null,
+    created_at: '2024-01-01T00:00:00Z',
+    label: 'Supreme Court Chief Justice',
+    icon: '🏗️',
+    description: 'Supreme Court head — final rulings & bill suspension power',
+  },
 ];
 
 const ACTIVE_PROFILE_KEY = 'clms_active_profile_id';

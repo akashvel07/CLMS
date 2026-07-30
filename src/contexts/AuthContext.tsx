@@ -108,6 +108,17 @@ export const PRESET_PROFILES: PresetProfile[] = [
     description: 'Inter-ministry & diplomatic ties',
   },
   {
+    id: 'road-transport-min',
+    name: 'Min. Sarah Jenkins',
+    email: 'road_transport@clms.gov',
+    role: 'ministry',
+    ministry_id: 'road_transport',
+    created_at: '2024-01-01T00:00:00Z',
+    label: 'Road & Transport',
+    icon: '🚗',
+    description: 'Infrastructure, public transit & highways',
+  },
+  {
     id: 'public-citizen',
     name: 'Public Citizen',
     email: 'public@clms.gov',

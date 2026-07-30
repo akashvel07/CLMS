@@ -14,6 +14,7 @@ import PresidentPage from './pages/president/PresidentPage';
 import RequestsPage from './pages/requests/RequestsPage';
 import PublicDashboard from './pages/public/PublicDashboard';
 import SettingsPage from './pages/settings/SettingsPage';
+import RoadTransportPage from './pages/ministries/RoadTransportPage';
 import CourtPage from './pages/court/CourtPage';
 import SupremeCourtPage from './pages/court/SupremeCourtPage';
 import NewsPage from './pages/news/NewsPage';
@@ -58,6 +59,7 @@ function App() {
             <Route path="/ministries/career" element={<CareerPage />} />
             <Route path="/ministries/personal-dev" element={<PersonalDevPage />} />
             <Route path="/ministries/external-affairs" element={<ExternalAffairsPage />} />
+            <Route path="/ministries/road-transport" element={<RoadTransportPage />} />
             {/* Judiciary Routes */}
             <Route path="/court" element={<CourtPage />} />
             <Route path="/supreme-court" element={<SupremeCourtPage />} />

@@ -64,6 +64,8 @@
   --ministry-external-glow: hsla(200, 60%, 50%, 0.25);
   --ministry-president: hsl(43, 96%, 60%);
   --ministry-president-glow: hsla(43, 96%, 60%, 0.25);
+  --ministry-road: hsl(25, 80%, 55%);
+  --ministry-road-glow: hsla(25, 80%, 55%, 0.25);
 
   /* Ministry Status */
   --ms-exceptional: hsl(152, 85%, 45%);

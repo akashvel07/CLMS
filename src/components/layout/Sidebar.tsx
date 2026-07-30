@@ -5,7 +5,7 @@ import {
   HeartPulse, GraduationCap, DollarSign, Briefcase, Monitor,
   Star, Gamepad2, Globe2, MessageSquare, Settings, ChevronLeft,
   ChevronRight, LogOut, Bell, Heart, BadgeDollarSign, Laptop,
-  Scale, Landmark, Tv
+  Scale, Landmark, Tv, Car
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ const ministriesNav = [
   { label: 'Career', path: '/ministries/career', icon: Briefcase, code: 'career' },
   { label: 'Personal Dev', path: '/ministries/personal-dev', icon: Star, code: 'personal_dev' },
   { label: 'External Affairs', path: '/ministries/external-affairs', icon: Globe2, code: 'external_affairs' },
+  { label: 'Road & Transport', path: '/ministries/road-transport', icon: Car, code: 'road_transport' },
 ];
 
 interface SidebarProps {

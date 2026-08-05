@@ -75,42 +75,50 @@ const GlobalBudgetPage: React.FC = () => {
         <div className="card-header">
           <div className="card-title"><PieChart size={18} /> Ministry Allocations</div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', textAlign: 'left' }}>
-                <th style={{ padding: '12px' }}>Ministry</th>
-                <th style={{ padding: '12px' }}>Description</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>Allocated (₹)</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>Used (₹)</th>
-                <th style={{ padding: '12px', textAlign: 'right' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allocations.map(item => {
-                const debt = Math.max(0, (item.used_amount || 0) - item.amount);
-                return (
-                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px' }}>
-                      <span className="badge badge-secondary">{MINISTRY_CODE_TO_LABEL[item.ministry_code] || item.ministry_code}</span>
-                    </td>
-                    <td style={{ padding: '12px' }}>{item.title}</td>
-                    <td style={{ padding: '12px', textAlign: 'right', fontWeight: 500 }}>{item.amount.toLocaleString()}</td>
-                    <td style={{ padding: '12px', textAlign: 'right', fontWeight: 500 }}>{(item.used_amount || 0).toLocaleString()}</td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                      {item.is_held ? (
-                        <span className="badge badge-warning">On Hold</span>
-                      ) : debt > 0 ? (
-                        <span className="badge badge-danger">Debt: ₹{debt.toLocaleString()}</span>
-                      ) : (
-                        <span className="badge badge-passed">Active</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: '0 var(--space-2) var(--space-4) var(--space-2)' }}>
+          {allocations.map(item => {
+            const debt = Math.max(0, (item.used_amount || 0) - item.amount);
+            return (
+              <div key={item.id} style={{ 
+                background: 'var(--bg-default)', 
+                border: '1px solid var(--border-subtle)', 
+                borderRadius: 'var(--radius-lg)', 
+                padding: 'var(--space-5)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-4)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <span className="badge badge-secondary" style={{ marginBottom: '8px', display: 'inline-block' }}>
+                      {MINISTRY_CODE_TO_LABEL[item.ministry_code] || item.ministry_code}
+                    </span>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{item.title}</h3>
+                  </div>
+                  <div>
+                    {item.is_held ? (
+                      <span className="badge badge-warning">On Hold</span>
+                    ) : debt > 0 ? (
+                      <span className="badge badge-danger">Debt: ₹{debt.toLocaleString()}</span>
+                    ) : (
+                      <span className="badge badge-passed">Active</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid-2" style={{ gap: '16px', marginTop: '4px' }}>
+                  <div style={{ background: 'var(--bg-elevated)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Allocated Budget</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>₹{item.amount.toLocaleString()}</div>
+                  </div>
+                  <div style={{ background: 'var(--bg-elevated)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Used Amount</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>₹{(item.used_amount || 0).toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

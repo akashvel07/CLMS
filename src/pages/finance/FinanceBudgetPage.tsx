@@ -135,9 +135,9 @@ const FinanceBudgetPage: React.FC = () => {
           {/* Current Cycle Status */}
           <div className="card">
             <div className="card-header">
-              <div className="card-title" style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 Budget Period: 
-                <select value={targetMonth} onChange={e => setTargetMonth(Number(e.target.value))} className="form-select" style={{ marginLeft: 8, padding: '2px 8px', width: 'auto', minWidth: '100px', display: 'inline-block' }}>
+                <select value={targetMonth} onChange={e => setTargetMonth(Number(e.target.value))} className="form-select" style={{ padding: '2px 8px', width: 'auto', minWidth: '100px', display: 'inline-block' }}>
                   {Array.from({length: 12}, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>Month {m}</option>
                   ))}
@@ -158,7 +158,7 @@ const FinanceBudgetPage: React.FC = () => {
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div className="grid-3" style={{ gap: '12px', marginBottom: '16px' }}>
               <div style={{ background: 'var(--bg-default)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Allocated</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>₹{totalAllocated.toLocaleString()}</div>
@@ -173,7 +173,7 @@ const FinanceBudgetPage: React.FC = () => {
               </div>
             </div>
             
-            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
               <button 
                 className="btn btn-secondary" 
                 onClick={handleSyncDatabase}
@@ -233,7 +233,7 @@ const FinanceBudgetPage: React.FC = () => {
                     opacity: item.status === 'rejected' ? 0.6 : 1
                   }}>
                     {/* Header row: Ministry & Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
                           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }}></div>
@@ -291,7 +291,7 @@ const FinanceBudgetPage: React.FC = () => {
                     </div>
 
                     {/* Amounts Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '4px' }}>
+                    <div className="grid-2" style={{ gap: '20px', marginTop: '4px' }}>
                       <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-passed)' }}></div>

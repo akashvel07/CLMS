@@ -24,6 +24,7 @@ import HealthPage from './pages/ministries/HealthPage';
 import EducationPage from './pages/ministries/EducationPage';
 import FinancePage from './pages/ministries/FinancePage';
 import FinanceBudgetPage from './pages/finance/FinanceBudgetPage';
+import GlobalBudgetPage from './pages/budget/GlobalBudgetPage';
 import ITPage from './pages/ministries/ITPage';
 import EntertainmentPage from './pages/ministries/EntertainmentPage';
 import CareerPage from './pages/ministries/CareerPage';
@@ -46,8 +47,10 @@ function App() {
             <Route path="/bills" element={<BillsPage />} />
             <Route path="/bills/new" element={<NewBillPage />} />
             <Route path="/parliament" element={<ParliamentPage />} />
-            <Route path="/president" element={<PresidentPage />} />
+            <Route path="/news" element={<NewsPage />} />
+            <Route path="/budget" element={<GlobalBudgetPage />} />
             <Route path="/requests" element={<RequestsPage />} />
+            <Route path="/president" element={<PresidentPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             {/* Ministry Routes */}
             <Route path="/ministries/health" element={<HealthPage />} />

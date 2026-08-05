@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tv, Radio, AlertTriangle, Scale, Crown, Building2, Vote, Globe, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { DataStore } from '../../lib/dataStore';
 import type { NewsFeedItem } from '../../types/database';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -191,6 +192,7 @@ const NewsCard: React.FC<{ item: NewsFeedItem; featured?: boolean }> = ({ item, 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const NewsPage: React.FC = () => {
+  const { role, user } = useAuth();
   const [news, setNews] = useState<NewsFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<NewsCategory>('all');

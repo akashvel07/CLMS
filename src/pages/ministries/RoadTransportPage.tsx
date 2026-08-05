@@ -10,7 +10,7 @@ const CHART = [
 
 const RoadTransportPage: React.FC = () => (
   <MinistryDashboard config={{
-    name: 'Road & Transport', code: 'road_transport',
+    name: 'Road & Transport', code: 'transport_road',
     color: 'var(--ministry-road)', glow: 'var(--ministry-road-glow)',
     icon: <Car size={28} />,
     description: 'National infrastructure, public transportation, highway development, and traffic safety.',

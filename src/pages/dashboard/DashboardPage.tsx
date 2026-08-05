@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   FileText, BookOpen, Vote, Building2, MessageSquare, TrendingUp,
-  CheckCircle, AlertTriangle, Activity, Crown
+  CheckCircle, AlertTriangle, Activity, Crown, PenTool
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -10,6 +10,8 @@ import {
 } from 'recharts';
 
 import { useBills, useRequests, useLaws, useVotes } from '../../hooks/useSupabaseData';
+import WriteStatementModal from '../../components/shared/WriteStatementModal';
+import { useState } from 'react';
 
 const BILL_TREND = [
   { month: 'Jan', bills: 4 }, { month: 'Feb', bills: 7 }, { month: 'Mar', bills: 5 },
@@ -23,6 +25,7 @@ const DashboardPage: React.FC = () => {
   const { laws } = useLaws();
   const { requests } = useRequests();
   const { votes } = useVotes();
+  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -81,6 +84,11 @@ const DashboardPage: React.FC = () => {
               <Crown size={20} color="var(--accent-gold)" />
               <span style={{ color: 'var(--accent-gold)', fontWeight: 700, fontSize: '0.9rem' }}>Presidential Office</span>
             </div>
+          )}
+          {role === 'public' && (
+            <button className="btn btn-primary btn-sm" onClick={() => setStatementModalOpen(true)}>
+              <PenTool size={14} /> Write Statement
+            </button>
           )}
         </div>
       </div>
@@ -238,6 +246,12 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+      <WriteStatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setStatementModalOpen(false)} 
+        role={role} 
+        userName={user?.name || 'Citizen'} 
+      />
     </div>
   );
 };

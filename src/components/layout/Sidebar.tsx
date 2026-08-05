@@ -80,6 +80,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, mobileOpen, onToggle }) =>
             <Vote className="nav-icon" size={18} />
             <span className="nav-label">Parliament</span>
           </NavLink>
+          <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/budget">
+            <BadgeDollarSign className="nav-icon" size={18} />
+            <span className="nav-label">Global Budget</span>
+          </NavLink>
         </div>
 
         {/* President only */}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Scale, FileText, CheckCircle, Gavel, Crown, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Scale, FileText, CheckCircle, Gavel, Crown, Plus, ChevronRight, AlertTriangle, Shield, PenTool } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DataStore } from '../../lib/dataStore';
 import type { BillItem } from '../../lib/dataStore';
 import type { SupremeCase, SupremeOrder } from '../../types/database';
 import { format } from 'date-fns';
+import WriteStatementModal from '../../components/shared/WriteStatementModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ const SupremeCourtPage: React.FC = () => {
   const [selectedCase, setSelectedCase] = useState<SupremeCase | null>(null);
   const [showRulingModal, setShowRulingModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
 
   // Ruling form
   const [ruling, setRuling] = useState<SupremeRuling>('upheld');
@@ -235,6 +237,12 @@ const SupremeCourtPage: React.FC = () => {
                   onClick={() => setShowSuspendModal(true)}
                 >
                   <Shield size={13} /> Suspend a Bill
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setStatementModalOpen(true)}
+                >
+                  <PenTool size={13} /> Write Statement
                 </button>
               </>
             )}
@@ -630,6 +638,12 @@ const SupremeCourtPage: React.FC = () => {
           50% { opacity: 0.3; }
         }
       `}</style>
+      <WriteStatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setStatementModalOpen(false)} 
+        role={role} 
+        userName={user?.name || 'Chief Justice'} 
+      />
     </div>
   );
 };

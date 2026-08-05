@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, CheckCircle, XCircle, PauseCircle, Flag, Bell, TrendingUp, TrendingDown, FileText, MessageSquare, AlertTriangle, Check } from 'lucide-react';
+import { Crown, CheckCircle, XCircle, PauseCircle, Flag, Bell, TrendingUp, TrendingDown, FileText, MessageSquare, AlertTriangle, Check, PenTool } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBills, useRequests, useLaws, useBudgets } from '../../hooks/useSupabaseData';
 import { DataStore } from '../../lib/dataStore';
+import WriteStatementModal from '../../components/shared/WriteStatementModal';
 
 const STATUS_LABEL: Record<string, string> = {
   exceptional: 'Exceptional', very_good: 'Very Good', good: 'Good',
@@ -23,6 +24,7 @@ const PresidentPage: React.FC = () => {
   const { requests } = useRequests();
   const { laws } = useLaws();
   const { budgets } = useBudgets();
+  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
 
   const currentDay = new Date().getDate();
   const isBudgetApprovalDay = currentDay >= 1 && currentDay <= 5;
@@ -186,6 +188,9 @@ const PresidentPage: React.FC = () => {
           <p>Full executive oversight & approval management — {user?.name ?? 'President Alexander'}</p>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--space-3)' }}>
+          <button className="btn btn-primary btn-sm" onClick={() => setStatementModalOpen(true)}>
+            <PenTool size={14} /> Write Statement
+          </button>
           <button className="btn btn-secondary btn-sm"><Bell size={14} /> Send Notice</button>
           <button className="btn btn-warning btn-sm"><Flag size={14} /> Flag Ministry</button>
         </div>
@@ -355,6 +360,12 @@ const PresidentPage: React.FC = () => {
           </div>
         </div>
       </div>
+      <WriteStatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setStatementModalOpen(false)} 
+        role={user?.role || 'president'} 
+        userName={user?.name || 'President'} 
+      />
     </div>
   );
 };

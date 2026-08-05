@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Scale, FileText, CheckCircle, XCircle, AlertTriangle, Clock, Gavel, ChevronRight, Plus, Eye, AlertCircle } from 'lucide-react';
+import { Scale, FileText, CheckCircle, XCircle, AlertTriangle, Clock, Gavel, ChevronRight, Plus, Eye, AlertCircle, PenTool } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { DataStore } from '../../lib/dataStore';
 import type { LawItem } from '../../lib/dataStore';
 import type { CourtCase, CourtOrder } from '../../types/database';
 import { format } from 'date-fns';
+import WriteStatementModal from '../../components/shared/WriteStatementModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ const CourtPage: React.FC = () => {
   const [showFileModal, setShowFileModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showAppealModal, setShowAppealModal] = useState(false);
+  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
 
   // File Case Form
   const [formTitle, setFormTitle] = useState('');
@@ -233,6 +235,11 @@ const CourtPage: React.FC = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          {isJustice && (
+            <button className="btn btn-secondary" onClick={() => setStatementModalOpen(true)}>
+              <PenTool size={15} /> Write Statement
+            </button>
+          )}
           <button
             id="btn-file-case"
             className="btn btn-primary"
@@ -662,6 +669,13 @@ const CourtPage: React.FC = () => {
           50% { opacity: 0.3; }
         }
       `}</style>
+
+      <WriteStatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setStatementModalOpen(false)} 
+        role={role} 
+        userName={user?.name || 'Justice'} 
+      />
     </div>
   );
 };

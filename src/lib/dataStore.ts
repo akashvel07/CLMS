@@ -406,7 +406,7 @@ export const DataStore = {
     return data;
   },
 
-  saveBudget: async (month: number, year: number, allocations: import('../types/database').BudgetLineItem[], status: 'draft' | 'pending_approval') => {
+  saveBudget: async (month: number, year: number, allocations: import('../types/database').BudgetLineItem[], status: import('../types/database').BudgetAllocation['status']) => {
     const { error } = await db
       .from('budget_allocations')
       .upsert(
@@ -414,6 +414,18 @@ export const DataStore = {
         { onConflict: 'month,year' }
       );
     if (error) console.error('[DataStore] saveBudget error:', error);
+    await DataStore.syncAllMinistryBudgets();
+    notifyListeners();
+  },
+
+  deleteBudget: async (month: number, year: number) => {
+    const { error } = await db
+      .from('budget_allocations')
+      .delete()
+      .eq('month', month)
+      .eq('year', year);
+    if (error) console.error('[DataStore] deleteBudget error:', error);
+    await DataStore.syncAllMinistryBudgets();
     notifyListeners();
   },
 
@@ -428,38 +440,58 @@ export const DataStore = {
       .eq('id', id);
     if (error) console.error('[DataStore] updateBudgetStatus error:', error);
 
-    // If approved, update ministry budgets and request statuses
+    // If approved, update request statuses
     if (status === 'approved') {
       const { data: budget } = await db.from('budget_allocations').select('*').eq('id', id).single();
       if (budget && budget.allocations) {
         const allocations = budget.allocations as import('../types/database').BudgetLineItem[];
-        
-        // Sum up amounts per ministry for approved items only
-        const ministrySums: Record<string, number> = {};
-        
         for (const item of allocations) {
-          if (item.status === 'approved') {
-            ministrySums[item.ministry_code] = (ministrySums[item.ministry_code] || 0) + item.amount;
-            
-            // Mark the source request as completed if applicable
-            if (item.source_request_id) {
-              await db.from('requests').update({ status: 'completed', president_status: 'completed' }).eq('id', item.source_request_id);
-            }
+          if (item.status === 'approved' && item.source_request_id) {
+            await db.from('requests').update({ status: 'completed', president_status: 'completed' }).eq('id', item.source_request_id);
           } else if (item.status === 'rejected' && item.source_request_id) {
-            // Mark the source request as rejected
             await db.from('requests').update({ status: 'rejected', president_status: 'rejected' }).eq('id', item.source_request_id);
           }
         }
-        
-        // Add to each ministry's base budget
-        for (const [code, addAmount] of Object.entries(ministrySums)) {
-          const { data: minData } = await db.from('ministries').select('budget').eq('code', code).single();
-          if (minData) {
-            const newBudget = Number(minData.budget || 0) + addAmount;
-            await db.from('ministries').update({ budget: newBudget }).eq('code', code);
-          }
-        }
       }
+    }
+    await DataStore.syncAllMinistryBudgets();
+    notifyListeners();
+  },
+
+  syncAllMinistryBudgets: async () => {
+    // Calculate allocated, used, and debt per ministry based on all approved budgets
+    const { data: allBudgets } = await db.from('budget_allocations').select('*').eq('status', 'approved');
+    if (!allBudgets) return;
+
+    const stats: Record<string, { allocated: number, used: number, debt: number }> = {};
+    
+    // Initialize stats
+    const { data: ministries } = await db.from('ministries').select('code');
+    if (ministries) {
+      ministries.forEach((m: any) => {
+        stats[m.code] = { allocated: 0, used: 0, debt: 0 };
+      });
+    }
+
+    allBudgets.forEach((b: any) => {
+      const allocations = b.allocations as import('../types/database').BudgetLineItem[];
+      allocations.forEach(item => {
+        if (item.status === 'approved' && !item.is_held) {
+          const ministryStats = stats[item.ministry_code] || { allocated: 0, used: 0, debt: 0 };
+          ministryStats.allocated += item.amount;
+          ministryStats.used += (item.used_amount || 0);
+          ministryStats.debt += Math.max(0, (item.used_amount || 0) - item.amount);
+          stats[item.ministry_code] = ministryStats;
+        }
+      });
+    });
+
+    for (const [code, { allocated, used, debt }] of Object.entries(stats)) {
+      await db.from('ministries').update({ 
+        budget: allocated,
+        budget_used: used,
+        budget_debt: debt
+      }).eq('code', code);
     }
     notifyListeners();
   },

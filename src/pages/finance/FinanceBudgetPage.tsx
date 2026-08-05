@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, Calendar as CalendarIcon, Plus, AlertTriangle, Send, Trash2, CheckCircle } from 'lucide-react';
+import { Landmark, Calendar as CalendarIcon, Plus, AlertTriangle, Send, Trash2, CheckCircle, PauseCircle, RotateCcw, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBudgets, useRequests } from '../../hooks/useSupabaseData';
 import { DataStore } from '../../lib/dataStore';
@@ -18,33 +18,32 @@ const MINISTRIES = [
   { id: 'transport_road', name: 'Road Safety & Transport' }
 ];
 
+const getMinistryCodeFromName = (name: string): string => {
+  if (!name) return 'finance';
+  const n = name.toLowerCase();
+  if (n.includes('health')) return 'health';
+  if (n.includes('education')) return 'education';
+  if (n.includes('career')) return 'career';
+  if (n === 'it' || n.includes('information')) return 'it';
+  if (n.includes('personal')) return 'personal_dev';
+  if (n.includes('entertainment')) return 'entertainment';
+  if (n.includes('external')) return 'external_affairs';
+  if (n.includes('road') || n.includes('transport')) return 'transport_road';
+  return 'finance';
+};
+
 const FinanceBudgetPage: React.FC = () => {
   const { role, user } = useAuth();
-  const { budgets, refresh } = useBudgets();
-  const { requests } = useRequests();
+  const { budgets, refresh: refreshBudgets } = useBudgets();
   
-  // Date logic: 20th to 5th of next month
   const today = new Date();
-  const currentDay = today.getDate();
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
   
-  let targetMonth = currentMonth;
-  let targetYear = currentYear;
-  if (currentDay >= 20) {
-    targetMonth = currentMonth + 1;
-    if (targetMonth > 12) {
-      targetMonth = 1;
-      targetYear++;
-    }
-  }
+  const [targetMonth, setTargetMonth] = useState(currentMonth);
+  const [targetYear, setTargetYear] = useState(currentYear);
 
-  const canSubmit = currentDay >= 20 || currentDay <= 5;
-  
   const [allocations, setAllocations] = useState<BudgetLineItem[]>([]);
-  const [newItemMinistry, setNewItemMinistry] = useState('health');
-  const [newItemTitle, setNewItemTitle] = useState('');
-  const [newItemAmount, setNewItemAmount] = useState('');
 
   const currentBudget = budgets.find(b => b.month === targetMonth && b.year === targetYear);
 
@@ -56,93 +55,53 @@ const FinanceBudgetPage: React.FC = () => {
     }
   }, [currentBudget]);
 
-  // Auto-add approved requests
-  useEffect(() => {
-    const approvedRequests = requests.filter(r => {
-      const isTargetFinance = r.to.toLowerCase() === 'finance';
-      if (!isTargetFinance) return false;
-      
-      const isApprovedSmall = r.amount <= 200 && r.status === 'approved';
-      const isApprovedLarge = r.amount > 200 && r.president_status === 'approved';
-      
-      return isApprovedSmall || isApprovedLarge;
-    });
 
-    if (approvedRequests.length > 0) {
-      setAllocations(prev => {
-        let modified = false;
-        const newAllocations = [...prev];
-        approvedRequests.forEach(req => {
-          if (!newAllocations.some(a => a.source_request_id === req.id)) {
-            const minCode = MINISTRIES.find(m => m.name.toLowerCase() === req.from.toLowerCase())?.id || 'finance';
-            newAllocations.push({
-              id: crypto.randomUUID(),
-              ministry_code: minCode,
-              title: `Request: ${req.title}`,
-              amount: req.amount,
-              source_request_id: req.id,
-              status: 'pending'
-            });
-            modified = true;
-          }
-        });
-        return modified ? newAllocations : prev;
-      });
+  const handleAddCustomItem = () => {
+    const newItem: BudgetLineItem = {
+      id: crypto.randomUUID(),
+      ministry_code: 'finance',
+      title: 'Custom Allocation',
+      amount: 0,
+      used_amount: 0,
+      is_held: false,
+      status: 'pending'
+    };
+    setAllocations(prev => [newItem, ...prev]);
+  };
+
+  const totalAllocated = allocations.reduce((acc, item) => acc + (item.status !== 'rejected' && !item.is_held ? item.amount : 0), 0);
+  const totalUsed = allocations.reduce((acc, item) => acc + (item.status !== 'rejected' && !item.is_held ? (item.used_amount || 0) : 0), 0);
+  const totalDebt = allocations.reduce((acc, item) => {
+    if (item.status !== 'rejected' && !item.is_held && (item.used_amount || 0) > item.amount) {
+      return acc + ((item.used_amount || 0) - item.amount);
     }
-  }, [requests]);
+    return acc;
+  }, 0);
 
-  const totalAllocated = allocations.reduce((acc, item) => acc + (item.status !== 'rejected' ? item.amount : 0), 0);
-
-  // Requests > 200 to Finance that haven't been added to the budget and are still pending President
-  const pendingRequests = requests.filter(r => 
-    r.to.toLowerCase() === 'finance' && 
-    r.amount > 200 && 
-    r.president_status === 'pending' &&
-    !allocations.some(a => a.source_request_id === r.id)
-  );
-
-  const handleAddManualItem = () => {
-    if (!newItemTitle || !newItemAmount || Number(newItemAmount) <= 0) return;
-    
-    const newItem: BudgetLineItem = {
-      id: crypto.randomUUID(),
-      ministry_code: newItemMinistry,
-      title: newItemTitle,
-      amount: Number(newItemAmount),
-      status: 'pending'
-    };
-    
-    setAllocations(prev => [...prev, newItem]);
-    setNewItemTitle('');
-    setNewItemAmount('');
-  };
-
-  const handleAddRequestItem = (req: RequestItem) => {
-    const minCode = MINISTRIES.find(m => m.name === req.from)?.id || 'finance';
-    const newItem: BudgetLineItem = {
-      id: crypto.randomUUID(),
-      ministry_code: minCode,
-      title: `Request: ${req.title}`,
-      amount: req.amount,
-      source_request_id: req.id,
-      status: 'pending'
-    };
-    setAllocations(prev => [...prev, newItem]);
-  };
-
-  const handleRemoveItem = (id: string) => {
+  const handleRemoveItem = async (id: string) => {
     setAllocations(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleSaveDraft = async () => {
-    await DataStore.saveBudget(targetMonth, targetYear, allocations, 'draft');
-    refresh();
+
+  const handleUpdateItem = (id: string, field: keyof BudgetLineItem, value: any) => {
+    setAllocations(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    await DataStore.saveBudget(targetMonth, targetYear, allocations, 'pending_approval');
-    refresh();
+  const handleSaveBudget = async () => {
+    await DataStore.saveBudget(targetMonth, targetYear, allocations, 'approved');
+    refreshBudgets();
+  };
+
+  const handleClearBudget = async () => {
+    if (confirm(`Are you sure you want to clear the entire budget for Month ${targetMonth}, ${targetYear}? This cannot be undone.`)) {
+      await DataStore.deleteBudget(targetMonth, targetYear);
+      setAllocations([]);
+      refreshBudgets();
+    }
+  };
+
+  const handleSyncDatabase = () => {
+    refreshBudgets();
   };
 
   if (role !== 'ministry' || user?.ministry_id !== 'finance') {
@@ -157,7 +116,7 @@ const FinanceBudgetPage: React.FC = () => {
     );
   }
 
-  const isLocked = currentBudget?.status === 'pending_approval' || currentBudget?.status === 'approved';
+  const isLockedForRemoval = currentBudget?.status === 'pending_approval' || currentBudget?.status === 'approved';
 
   return (
     <div className="page-container">
@@ -165,8 +124,8 @@ const FinanceBudgetPage: React.FC = () => {
         <div className="page-title">
           <div className="icon"><Landmark size={20} color="var(--ministry-finance)" /></div>
           <div>
-            <h1>Monthly Budget Allocation</h1>
-            <p>Draft detailed budget lines. Submissions open 20th - 5th.</p>
+            <h1>Budget Allocation Dashboard</h1>
+            <p>Manage budget allocations, usages, and holds across all ministries.</p>
           </div>
         </div>
       </div>
@@ -176,194 +135,207 @@ const FinanceBudgetPage: React.FC = () => {
           {/* Current Cycle Status */}
           <div className="card">
             <div className="card-header">
-              <div className="card-title">Cycle Target: Month {targetMonth}/{targetYear}</div>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center' }}>
+                Budget Period: 
+                <select value={targetMonth} onChange={e => setTargetMonth(Number(e.target.value))} className="form-select" style={{ marginLeft: 8, padding: '2px 8px', width: 'auto', minWidth: '100px', display: 'inline-block' }}>
+                  {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>Month {m}</option>
+                  ))}
+                </select>
+                <select value={targetYear} onChange={e => setTargetYear(Number(e.target.value))} className="form-select" style={{ marginLeft: 4, padding: '2px 8px', width: 'auto', minWidth: '80px', display: 'inline-block' }}>
+                  {[2024, 2025, 2026, 2027, 2028].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
               <CalendarIcon size={16} color="var(--text-muted)" />
             </div>
             
             <div style={{ marginBottom: 'var(--space-4)' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Today's Date</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>Day {currentDay}</div>
-              {!canSubmit && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--status-suspended)', marginTop: 4 }}>
-                  Submissions are currently closed. You can draft allocations, but must wait until the 20th to submit.
-                </div>
-              )}
-              {canSubmit && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--status-passed)', marginTop: 4 }}>
-                  Submissions are open until the 5th!
-                </div>
-              )}
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Status</div>
+              <span className={`badge badge-${currentBudget ? (currentBudget.status === 'approved' ? 'passed' : currentBudget.status === 'rejected' ? 'rejected' : 'submitted') : 'draft'}`}>
+                {currentBudget ? currentBudget.status.replace('_', ' ').toUpperCase() : 'DRAFT'}
+              </span>
             </div>
 
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Current Cycle Status</div>
-              <span className={`badge badge-${currentBudget ? (currentBudget.status === 'approved' ? 'passed' : currentBudget.status === 'rejected' ? 'rejected' : 'submitted') : 'draft'}`}>
-                {currentBudget ? currentBudget.status.replace('_', ' ').toUpperCase() : 'NO SUBMISSION'}
-              </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ background: 'var(--bg-default)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Allocated</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>₹{totalAllocated.toLocaleString()}</div>
+              </div>
+              <div style={{ background: 'var(--bg-default)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Used</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>₹{totalUsed.toLocaleString()}</div>
+              </div>
+              <div style={{ background: 'var(--bg-default)', padding: '12px', borderRadius: '8px', border: '1px solid var(--status-rejected)', color: 'var(--status-rejected)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'inherit' }}>Total Debt</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>₹{totalDebt.toLocaleString()}</div>
+              </div>
             </div>
             
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
               <button 
                 className="btn btn-secondary" 
-                style={{ flex: 1 }} 
-                onClick={handleSaveDraft}
-                disabled={isLocked}
+                onClick={handleSyncDatabase}
+                title="Force refresh database state"
               >
-                Save Draft
+                <RefreshCw size={14} /> Sync DB
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={handleClearBudget}
+                disabled={allocations.length === 0 && !currentBudget}
+                title="Clear current budget completely"
+              >
+                <Trash2 size={14} /> Clear Budget
               </button>
               <button 
                 className="btn btn-primary" 
                 style={{ flex: 1 }} 
-                onClick={handleSubmit}
-                disabled={!canSubmit || isLocked || allocations.length === 0}
+                onClick={handleSaveBudget}
+                disabled={allocations.length === 0}
               >
-                <Send size={14} /> Submit to President
+                <Send size={14} /> Save Budget Changes
               </button>
             </div>
           </div>
-
-          {/* Pending Requests to Include */}
-          {!isLocked && (
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">Pending Large Requests (&gt; ₹200)</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {pendingRequests.length === 0 ? (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
-                    No pending requests &gt; ₹200
-                  </div>
-                ) : (
-                  pendingRequests.map(r => (
-                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-default)', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)' }}>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{r.title}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From {r.from} · ₹{r.amount}</div>
-                      </div>
-                      <button className="btn btn-success btn-sm" onClick={() => handleAddRequestItem(r)}>
-                        <Plus size={12} /> Add
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Allocation Details */}
         <div className="card">
-          <div className="card-header">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="card-title">Budget Line Items</div>
-            <div className="badge badge-primary">Total: ₹{totalAllocated.toLocaleString()}</div>
+            <button className="btn btn-secondary btn-sm" onClick={handleAddCustomItem}>
+              <Plus size={14} /> Add Manual Entry
+            </button>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {allocations.length === 0 ? (
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>
-                No line items added yet.
+                No line items added yet. Approved requests will appear here automatically.
               </div>
             ) : (
-              allocations.map(item => (
-                <div key={item.id}>
-                  {/* Desktop view */}
-                  <div className="desktop-only" style={{ 
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    padding: '12px', background: 'var(--bg-default)', borderRadius: 6, border: '1px solid var(--border-subtle)',
+              allocations.map(item => {
+                const debt = Math.max(0, (item.used_amount || 0) - item.amount);
+                
+                return (
+                  <div key={item.id} className="budget-item-card" style={{ 
+                    padding: '20px', 
+                    background: 'var(--bg-default)', 
+                    borderRadius: '12px', 
+                    border: '1px solid var(--border-subtle)',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '16px',
+                    transition: 'all 0.2s ease',
                     opacity: item.status === 'rejected' ? 0.6 : 1
                   }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span className="badge badge-secondary">{MINISTRIES.find(m => m.id === item.ministry_code)?.name}</span>
-                        {item.source_request_id && <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>From Request</span>}
-                        {item.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>Rejected</span>}
+                    {/* Header row: Ministry & Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-elevated)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }}></div>
+                          <select 
+                            value={item.ministry_code} 
+                            onChange={(e) => handleUpdateItem(item.id, 'ministry_code', e.target.value)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                          >
+                            {MINISTRIES.map(m => <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>)}
+                          </select>
+                        </div>
+                        {item.is_held && <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>ON HOLD</span>}
                       </div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 500, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
-                        {item.title}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
-                        ₹{item.amount.toLocaleString()}
-                      </div>
-                      {!isLocked && (
-                        <button className="btn btn-danger btn-sm" style={{ padding: 6 }} onClick={() => handleRemoveItem(item.id)}>
+                      
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleUpdateItem(item.id, 'is_held', !item.is_held)} 
+                          style={{ 
+                            background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: '6px', 
+                            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', 
+                            fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                            color: item.is_held ? 'var(--text-primary)' : 'var(--status-suspended)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <PauseCircle size={14} /> {item.is_held ? 'Release' : 'Hold'}
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveItem(item.id)} 
+                          title="Delete allocation"
+                          style={{ 
+                            background: 'var(--status-rejected)', border: 'none', borderRadius: '6px', 
+                            padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            cursor: 'pointer', color: 'white', transition: 'all 0.2s ease'
+                          }}
+                        >
                           <Trash2 size={14} />
                         </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mobile view */}
-                  <div className="mobile-only" style={{ 
-                    display: 'flex', flexDirection: 'column', gap: 8,
-                    padding: '12px', background: 'var(--bg-default)', borderRadius: 6, border: '1px solid var(--border-subtle)',
-                    opacity: item.status === 'rejected' ? 0.6 : 1,
-                    minWidth: 0, overflowWrap: 'break-word', wordBreak: 'break-word'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="badge badge-secondary">{MINISTRIES.find(m => m.id === item.ministry_code)?.name}</span>
-                      {item.source_request_id && <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>From Request</span>}
-                      {item.status === 'rejected' && <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}>Rejected</span>}
-                    </div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 500, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
-                      {item.title}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: item.status === 'rejected' ? 'var(--status-rejected)' : 'var(--text-primary)' }}>
-                        ₹{item.amount.toLocaleString()}
                       </div>
-                      {!isLocked && (
-                        <button className="btn btn-danger btn-sm" style={{ padding: '6px 12px' }} onClick={() => handleRemoveItem(item.id)}>
-                          <Trash2 size={14} /> Remove
-                        </button>
-                      )}
                     </div>
+
+                    {/* Title Row */}
+                    <div>
+                      <input 
+                        type="text" 
+                        value={item.title} 
+                        onChange={(e) => handleUpdateItem(item.id, 'title', e.target.value)} 
+                        placeholder="Enter Allocation Title..."
+                        style={{ 
+                          width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-subtle)',
+                          fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', padding: '4px 0 8px 0', outline: 'none',
+                          transition: 'border-color 0.2s ease'
+                        }}
+                      />
+                    </div>
+
+                    {/* Amounts Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '4px' }}>
+                      <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-passed)' }}></div>
+                          Allocated Budget (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={item.amount || ''}
+                          onChange={(e) => handleUpdateItem(item.id, 'amount', Number(e.target.value))}
+                          style={{ 
+                            width: '100%', background: 'transparent', border: 'none', fontSize: '1.5rem', 
+                            fontWeight: 700, color: 'var(--text-primary)', outline: 'none' 
+                          }}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-suspended)' }}></div>
+                          Used Amount (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={item.used_amount || ''}
+                          onChange={(e) => handleUpdateItem(item.id, 'used_amount', Number(e.target.value))}
+                          style={{ 
+                            width: '100%', background: 'transparent', border: 'none', fontSize: '1.5rem', 
+                            fontWeight: 700, color: 'var(--text-primary)', outline: 'none' 
+                          }}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    {debt > 0 && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--status-rejected)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', background: 'rgba(255, 71, 87, 0.1)', padding: '8px 12px', borderRadius: '6px' }}>
+                        <AlertTriangle size={14} /> <strong>Debt Warning:</strong> ₹{debt.toLocaleString()} over allocated budget
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
-
-          {/* Add Manual Item */}
-          {!isLocked && (
-            <div style={{ background: 'var(--bg-elevated)', padding: 'var(--space-4)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 'var(--space-3)' }}>Add Manual Allocation</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                <select 
-                  className="input" 
-                  value={newItemMinistry} 
-                  onChange={(e) => setNewItemMinistry(e.target.value)}
-                >
-                  {MINISTRIES.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-                <input 
-                  type="text" 
-                  className="input" 
-                  placeholder="Details / Title (e.g. Server Maintenance)"
-                  value={newItemTitle}
-                  onChange={(e) => setNewItemTitle(e.target.value)}
-                />
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-default)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '2px 8px', flex: 1 }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginRight: 4 }}>₹</span>
-                    <input
-                      type="number"
-                      style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.85rem' }}
-                      placeholder="Amount"
-                      value={newItemAmount}
-                      onChange={(e) => setNewItemAmount(e.target.value)}
-                    />
-                  </div>
-                  <button className="btn btn-primary" onClick={handleAddManualItem}>
-                    <Plus size={16} /> Add
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

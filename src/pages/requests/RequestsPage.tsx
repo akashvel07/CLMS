@@ -31,10 +31,11 @@ const RequestsPage: React.FC = () => {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
+    to: 'Health',
     from: userMinistryName || 'Health',
-    to: 'Finance',
+    priority: 'medium' as any,
     amount: '',
+    targetMonth: ''
   });
 
   // Update default form origin when profile switches
@@ -75,13 +76,18 @@ const RequestsPage: React.FC = () => {
 
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || actionLoading) return;
+    if (!form.title || !form.description || actionLoading) return;
     setActionLoading(true);
+
+    const finalTitle = form.to === 'Finance' && form.targetMonth 
+      ? `[Month ${form.targetMonth}] ${form.title}` 
+      : form.title;
+
     await DataStore.addRequest({
-      title: form.title,
-      description: form.description,
       from: form.from,
       to: form.to,
+      title: finalTitle,
+      description: form.description,
       amount: Number(form.amount) || 0,
       priority: form.priority,
     });
@@ -92,6 +98,7 @@ const RequestsPage: React.FC = () => {
       from: userMinistryName || 'Health',
       to: 'Finance',
       amount: '',
+      targetMonth: ''
     });
     setShowForm(false);
     setActionLoading(false);
@@ -174,6 +181,17 @@ const RequestsPage: React.FC = () => {
                 <label className="form-label">Amount (₹)</label>
                 <input className="form-input" type="number" placeholder="0 if no budget needed" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} disabled={form.to !== 'Finance'} />
               </div>
+              {form.to === 'Finance' && (
+                <div className="form-group">
+                  <label className="form-label">Target Month</label>
+                  <select className="form-select" value={form.targetMonth} onChange={e => setForm({ ...form, targetMonth: e.target.value })}>
+                    <option value="">-- Select Month (Optional) --</option>
+                    {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+                      <option key={m} value={m}>Month {m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">Description <span className="required">*</span></label>

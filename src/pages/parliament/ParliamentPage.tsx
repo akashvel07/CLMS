@@ -202,11 +202,11 @@ const ParliamentPage: React.FC = () => {
         }}>
           <Building2 size={15} color="var(--text-muted)" />
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {role === 'ministry' ? 'Your Ministry Bills' : 'All Bills in Parliament'} ({sortedBills.length})
+            {role === 'ministry' ? 'Your Ministry Bills' : 'All Bills in Parliament'} ({Math.min(sortedBills.length, 4)})
           </span>
         </div>
         <div className="grid-auto">
-          {sortedBills.map(bill => {
+          {sortedBills.slice(0, 4).map(bill => {
             const cfg = STATUS_CONFIG[bill.status] ?? { label: bill.status, badge: 'badge-archived', color: 'hsl(220,15%,55%)' };
             const isActive = bill.id === activeBill?.id;
             return (

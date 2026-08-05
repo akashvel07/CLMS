@@ -50,6 +50,8 @@ export interface Ministry {
   code: MinistryCode;
   status: MinistryStatus;
   budget: number;
+  budget_used?: number;
+  budget_debt?: number;
   score: number;
   description: string;
 }
@@ -146,6 +148,8 @@ export interface BudgetLineItem {
   ministry_code: string;
   title: string;
   amount: number;
+  used_amount?: number;
+  is_held?: boolean;
   source_request_id?: string;
   status: 'pending' | 'approved' | 'rejected';
 }

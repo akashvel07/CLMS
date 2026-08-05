@@ -1,6 +1,8 @@
-import React from 'react';
-import { TrendingUp, TrendingDown, Minus, PauseCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, PauseCircle, PenTool } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import WriteStatementModal from '../../components/shared/WriteStatementModal';
+import { useBudgets } from '../../hooks/useSupabaseData';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 // ─── Ministry Config ───────────────────────────────────────────────────────────
@@ -23,12 +25,36 @@ export interface MinistryConfig {
   canSuspend: boolean;
 }
 
+
 // ─── Ministry Dashboard Component ─────────────────────────────────────────────
 
 interface MinistryDashboardProps { config: MinistryConfig; }
 
 const MinistryDashboard: React.FC<MinistryDashboardProps> = ({ config }) => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const { budgets } = useBudgets();
+  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
+
+  // Compute live budget
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  const activeBudget = budgets?.find((b: any) => b.status === 'approved' && b.month === currentMonth && b.year === currentYear);
+  let allocated = 0;
+  let used = 0;
+  let debt = 0;
+
+  if (activeBudget && activeBudget.allocations) {
+    activeBudget.allocations.forEach((item: any) => {
+      if (item.ministry_code === config.code && item.status !== 'rejected' && !item.is_held) {
+        allocated += item.amount;
+        used += (item.used_amount || 0);
+        debt += Math.max(0, (item.used_amount || 0) - item.amount);
+      }
+    });
+  }
+
+  const remaining = Math.max(0, allocated - used);
 
   const STATUS_LABEL: Record<string, string> = {
     exceptional: 'Exceptional', very_good: 'Very Good', good: 'Good',
@@ -55,18 +81,39 @@ const MinistryDashboard: React.FC<MinistryDashboardProps> = ({ config }) => {
                 <PauseCircle size={13} /> Suspend Bill
               </button>
             )}
+            {(role === 'ministry' && user.ministry_id === config.code) && (
+              <button className="btn btn-primary btn-sm" onClick={() => setStatementModalOpen(true)}>
+                <PenTool size={13} /> Write Statement
+              </button>
+            )}
           </div>
         </div>
         <div className="ministry-stats">
-          {[
-            { label: 'Performance', value: `${config.score}` },
-            { label: 'Budget', value: config.budget },
-          ].map(s => (
-            <div key={s.label} className="ministry-stat">
-              <div className="ministry-stat-value" style={{ color: config.color }}>{s.value}</div>
-              <div className="ministry-stat-label">{s.label}</div>
+          <div className="ministry-stat">
+            <div className="ministry-stat-value" style={{ color: config.color }}>{config.score}</div>
+            <div className="ministry-stat-label">Performance</div>
+          </div>
+          <div className="ministry-stat">
+            <div className="ministry-stat-value" style={{ color: config.color }}>₹{allocated.toLocaleString()}</div>
+            <div className="ministry-stat-label">Allocated</div>
+          </div>
+          <div className="ministry-stat">
+            <div className="ministry-stat-value" style={{ color: 'var(--text-primary)' }}>₹{used.toLocaleString()}</div>
+            <div className="ministry-stat-label">Used</div>
+          </div>
+          {debt > 0 && (
+            <div className="ministry-stat">
+              <div className="ministry-stat-value" style={{ color: 'var(--status-rejected)' }}>₹{debt.toLocaleString()}</div>
+              <div className="ministry-stat-label" style={{ color: 'var(--status-rejected)' }}>Debt</div>
             </div>
-          ))}
+          )}
+          {remaining > 0 && debt === 0 && (
+            <div className="ministry-stat">
+              <div className="ministry-stat-value" style={{ color: 'var(--status-passed)' }}>₹{remaining.toLocaleString()}</div>
+              <div className="ministry-stat-label">Remaining</div>
+            </div>
+          )}
+          
         </div>
       </div>
 
@@ -111,6 +158,12 @@ const MinistryDashboard: React.FC<MinistryDashboardProps> = ({ config }) => {
           </ResponsiveContainer>
         </div>
       </div>
+      <WriteStatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setStatementModalOpen(false)} 
+        role={role} 
+        userName={user?.name || 'Minister'} 
+      />
     </div>
   );
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Vote, CheckCircle, XCircle, MinusCircle, FileText, Building2, AlertCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { useBills, useVotes } from '../../hooks/useSupabaseData';
+import { useBills, useResolutions, useVotes, useResolutionVotes } from '../../hooks/useSupabaseData';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
-import { DataStore, type BillItem } from '../../lib/dataStore';
+import { DataStore, type BillItem, type ResolutionItem } from '../../lib/dataStore';
 import { ParliamentSeatingChart } from '../../components/ui/ParliamentSeatingChart';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ const MINISTRY_LABELS: Record<string, string> = {
 
 /** Determine if the current user can see a particular bill in parliament. */
 function isBillVisibleToUser(
-  bill: BillItem,
+  bill: BillItem | ResolutionItem,
   role: string,
   ministryCode: string | undefined
 ): boolean {
@@ -79,25 +79,35 @@ const ParliamentPage: React.FC = () => {
   });
 
   const { bills: allBills, loading: billsLoading } = useBills();
+  const { resolutions: allResolutions } = useResolutions();
+
+  const allItems = [
+    ...allBills.map(b => ({ ...b, itemType: 'bill' as const, displayId: b.bill_number })),
+    ...allResolutions.map(r => ({ ...r, itemType: 'resolution' as const, displayId: r.resolution_number }))
+  ];
 
   // Filter bills visible to this user
-  const visibleBills = allBills.filter(b => isBillVisibleToUser(b, role, ministryCode));
+  const visibleItems = allItems.filter(b => isBillVisibleToUser(b as any, role, ministryCode));
 
   // Sort: active voting first, then awaiting president, then rest
-  const sortedBills = [...visibleBills].sort((a, b) => {
+  const sortedItems = [...visibleItems].sort((a, b) => {
     const priority = (s: string) =>
       s === 'voting' ? 0 : s === 'awaiting_president' ? 1 : s === 'submitted' ? 2 : 3;
     return priority(a.status) - priority(b.status);
   });
 
   // Active bill for detailed voting panel
-  const activeBill: BillItem | undefined =
-    sortedBills.find(b => b.id === selectedBillId) ??
-    sortedBills.find(b => b.status === 'voting' || b.status === 'awaiting_president' || b.status === 'submitted') ??
-    sortedBills[0];
+  const activeBill = 
+    sortedItems.find(b => b.id === selectedBillId) ??
+    sortedItems.find(b => b.status === 'voting' || b.status === 'awaiting_president' || b.status === 'submitted') ??
+    sortedItems[0];
 
-  const { votes: allVotes } = useVotes(activeBill?.id);
-  const billVotes = activeBill ? allVotes.filter(v => v.bill_id === activeBill.id) : [];
+  const { votes: billVotesData } = useVotes(activeBill?.itemType === 'bill' ? activeBill.id : undefined);
+  const { votes: resVotesData } = useResolutionVotes(activeBill?.itemType === 'resolution' ? activeBill.id : undefined);
+  
+  const billVotes = activeBill 
+    ? (activeBill.itemType === 'bill' ? billVotesData : resVotesData as any[]) 
+    : [];
 
   const approveCount = billVotes.filter(v => v.vote === 'approve').length;
   const rejectCount  = billVotes.filter(v => v.vote === 'reject').length;
@@ -119,7 +129,11 @@ const ParliamentPage: React.FC = () => {
   const handleCastVote = async (choice: 'approve' | 'reject' | 'abstain') => {
     if (!activeBill || !canVote) return;
     const voterName = role === 'public' ? publicVoterName : user.name;
-    await DataStore.castVote(activeBill.id, voterName, role as any, choice);
+    if (activeBill.itemType === 'bill') {
+      await DataStore.castVote(activeBill.id, voterName, role as any, choice);
+    } else {
+      await DataStore.castResolutionVote(activeBill.id, voterName, role as any, choice);
+    }
   };
 
   const pieData = [
@@ -129,7 +143,7 @@ const ParliamentPage: React.FC = () => {
   ];
 
   // ── Empty state ─────────────────────────────────────────────────────────────
-  if (visibleBills.length === 0) {
+  if (visibleItems.length === 0) {
     return (
       <div className="page-container">
         <div className="page-header">
@@ -154,11 +168,11 @@ const ParliamentPage: React.FC = () => {
           }}>
             <FileText size={36} color="hsl(260,80%,65%)" />
           </div>
-          <h2 style={{ fontSize: '1.3rem', color: 'var(--text-primary)' }}>No Bills in Parliament</h2>
+          <h2 style={{ fontSize: '1.3rem', color: 'var(--text-primary)' }}>No Items in Parliament</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: 400 }}>
             {role === 'ministry'
-              ? 'No bills from your ministry have been submitted yet. Create a bill from the Bills page to get started.'
-              : 'No bills have been approved or submitted to Parliament yet.'}
+              ? 'No items from your ministry have been submitted yet. Create a bill from the Bills page to get started.'
+              : 'No items have been approved or submitted to Parliament yet.'}
           </p>
         </div>
       </div>
@@ -181,10 +195,10 @@ const ParliamentPage: React.FC = () => {
       {/* KPI Cards */}
       <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
         {[
-          { label: 'Active Bills', value: allBills.filter(b => b.status === 'voting').length, color: 'hsl(35,90%,55%)', icon: '🗳️' },
-          { label: 'Passed Laws', value: allBills.filter(b => b.status === 'passed' || b.status === 'enacted').length, color: 'hsl(152,70%,45%)', icon: '📜' },
-          { label: 'Rejected Bills', value: allBills.filter(b => b.status === 'rejected').length, color: 'hsl(0,72%,55%)', icon: '🚫' },
-          { label: 'Total Bills', value: allBills.length, color: 'hsl(220,15%,55%)', icon: '📁' },
+          { label: 'Active Bills', value: allItems.filter(b => b.status === 'voting').length, color: 'hsl(35,90%,55%)', icon: '🗳️' },
+          { label: 'Passed Laws', value: allItems.filter(b => b.status === 'passed' || b.status === 'enacted').length, color: 'hsl(152,70%,45%)', icon: '📜' },
+          { label: 'Rejected Bills', value: allItems.filter(b => b.status === 'rejected').length, color: 'hsl(0,72%,55%)', icon: '🚫' },
+          { label: 'Total Bills', value: allItems.length, color: 'hsl(220,15%,55%)', icon: '📁' },
         ].map(s => (
           <div key={s.label} className="card" style={{ flex: '1 1 120px', padding: 'var(--space-4)', textAlign: 'center' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: 4 }}>{s.icon}</div>
@@ -202,11 +216,11 @@ const ParliamentPage: React.FC = () => {
         }}>
           <Building2 size={15} color="var(--text-muted)" />
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {role === 'ministry' ? 'Your Ministry Bills' : 'All Bills in Parliament'} ({Math.min(sortedBills.length, 4)})
+            {role === 'ministry' ? 'Your Ministry Items' : 'All Items in Parliament'} ({Math.min(sortedItems.length, 4)})
           </span>
         </div>
         <div className="grid-auto">
-          {sortedBills.slice(0, 4).map(bill => {
+          {sortedItems.slice(0, 4).map(bill => {
             const cfg = STATUS_CONFIG[bill.status] ?? { label: bill.status, badge: 'badge-archived', color: 'hsl(220,15%,55%)' };
             const isActive = bill.id === activeBill?.id;
             return (
@@ -237,7 +251,7 @@ const ParliamentPage: React.FC = () => {
                   {bill.title}
                 </span>
                 <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                  {bill.bill_number} · {bill.ministry}
+                  {bill.displayId} · {bill.ministry}
                 </span>
               </button>
             );
@@ -258,7 +272,7 @@ const ParliamentPage: React.FC = () => {
           }}>
             <div style={{ flex: 1, minWidth: 'min(100%, 200px)' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
-                {activeBill.status === 'voting' ? '🗳️ Currently Voting Bill'
+                {activeBill.status === 'voting' ? activeBill.itemType === 'bill' ? '🗳️ Currently Voting Bill' : '🗳️ Currently Voting Resolution'
                   : activeBill.status === 'awaiting_president' ? '👑 Awaiting Presidential Approval'
                   : activeBill.status === 'approved' || activeBill.status === 'enacted' ? '✅ President-Approved Law'
                   : '📄 Bill Details'}
@@ -268,7 +282,7 @@ const ParliamentPage: React.FC = () => {
             </div>
             <div className="grid-auto" style={{ width: '100%', gap: 'var(--space-4)', flexShrink: 0 }}>
               {[
-                { label: 'Bill No.', value: activeBill.bill_number },
+                { label: 'Bill No.', value: activeBill.displayId },
                 { label: 'Ministry', value: activeBill.ministry },
                 { label: 'Status', value: STATUS_CONFIG[activeBill.status]?.label ?? activeBill.status },
               ].map(f => (
@@ -423,7 +437,7 @@ const ParliamentPage: React.FC = () => {
                     : 'This bill is currently suspended or under review.'}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Created by <strong>{activeBill.created_by_name}</strong> · {activeBill.ministry} Ministry · {activeBill.bill_number}
+                  Created by <strong>{activeBill.created_by_name}</strong> · {activeBill.ministry} Ministry · {activeBill.displayId}
                 </div>
               </div>
             </div>

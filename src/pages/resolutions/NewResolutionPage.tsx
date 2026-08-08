@@ -17,13 +17,13 @@ const MINISTRY_OPTIONS = [
   { code: 'transport_road', label: 'Road & Transport' },
 ];
 
-const NewBillPage: React.FC = () => {
+const NewResolutionPage: React.FC = () => {
   const { user, role } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (role === 'public' || role === 'justice' || role === 'chief_justice') {
-      navigate('/bills');
+      navigate('/resolutions');
     }
   }, [role, navigate]);
 
@@ -34,14 +34,7 @@ const NewBillPage: React.FC = () => {
     title: '',
     description: '',
     ministry_code: user.ministry_id || 'health',
-    type: 'new' as 'new' | 'repeal' | 'suspend',
-    target_law_id: '',
   });
-
-  const [laws, setLaws] = useState<LawItem[]>([]);
-  useEffect(() => {
-    DataStore.getLaws().then(data => setLaws(data.filter(l => l.status === 'active')));
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,27 +42,21 @@ const NewBillPage: React.FC = () => {
       setError('Please fill in all required fields.');
       return;
     }
-    if ((form.type === 'repeal' || form.type === 'suspend') && !form.target_law_id) {
-      setError('Please select a target law.');
-      return;
-    }
 
     setLoading(true);
     setError(null);
     try {
-      const newBill = await DataStore.addBill({
+      const newResolution = await DataStore.addResolution({
         title: form.title,
         description: form.description,
         ministry_code: form.ministry_code,
         created_by_name: user.name,
-        type: form.type,
-        target_law_id: form.target_law_id || undefined,
       });
 
-      if (newBill) {
-        navigate('/bills');
+      if (newResolution) {
+        navigate('/resolutions');
       } else {
-        setError('Failed to create bill. Please check database connection.');
+        setError('Failed to create resolution. Please check database connection.');
       }
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred.');
@@ -82,17 +69,17 @@ const NewBillPage: React.FC = () => {
     <div className="page-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div className="page-header">
         <button 
-          onClick={() => navigate('/bills')} 
+          onClick={() => navigate('/resolutions')} 
           className="btn btn-secondary btn-sm"
           style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-4)', width: 'fit-content' }}
         >
-          <ArrowLeft size={14} /> Back to Bills
+          <ArrowLeft size={14} /> Back to Resolutions
         </button>
         <div className="page-title">
           <div className="icon"><FileText size={20} color="var(--accent-primary)" /></div>
           <div>
-            <h1>Create Legislative Bill</h1>
-            <p>Draft a new bill to be submitted to Parliament for review and voting</p>
+            <h1>Create Legislative Resolution</h1>
+            <p>Draft a new resolution to be submitted to Parliament for review and voting</p>
           </div>
         </div>
       </div>
@@ -113,45 +100,11 @@ const NewBillPage: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Bill Type <span className="required">*</span></label>
-              <select 
-                className="form-select" 
-                value={form.type} 
-                onChange={e => setForm({ ...form, type: e.target.value as any, target_law_id: '' })}
-                disabled={loading}
-              >
-                <option value="new">Create New Law</option>
-                <option value="repeal">Repeal Existing Law</option>
-                <option value="suspend">Suspend Existing Law</option>
-              </select>
-            </div>
-
-            {(form.type === 'repeal' || form.type === 'suspend') && (
-              <div className="form-group">
-                <label className="form-label">Target Law <span className="required">*</span></label>
-                <select 
-                  className="form-select" 
-                  value={form.target_law_id} 
-                  onChange={e => setForm({ ...form, target_law_id: e.target.value })}
-                  disabled={loading}
-                  required
-                >
-                  <option value="">-- Select Law to {form.type === 'repeal' ? 'Repeal' : 'Suspend'} --</option>
-                  {laws.map(law => (
-                    <option key={law.id} value={law.id}>{law.law_number} - {law.title}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
           <div className="form-group">
-            <label className="form-label">Bill Title <span className="required">*</span></label>
+            <label className="form-label">Resolution Title <span className="required">*</span></label>
             <input 
               className="form-input" 
-              placeholder={form.type === 'new' ? "e.g. Universal Healthcare Access Act" : `e.g. ${form.type === 'repeal' ? 'Repeal' : 'Suspend'} of Law X`}
+              placeholder="e.g. Universal Healthcare Access Resolution"
               value={form.title} 
               onChange={e => setForm({ ...form, title: e.target.value })} 
               disabled={loading}
@@ -185,10 +138,10 @@ const NewBillPage: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Bill Description & Provisions <span className="required">*</span></label>
+            <label className="form-label">Resolution Description & Provisions <span className="required">*</span></label>
             <textarea 
               className="form-textarea" 
-              placeholder="Provide a detailed description of the bill's provisions, regulatory framework, and social impact..." 
+              placeholder="Provide a detailed description of the resolution's provisions, regulatory framework, and social impact..." 
               value={form.description} 
               onChange={e => setForm({ ...form, description: e.target.value })}
               disabled={loading}
@@ -201,7 +154,7 @@ const NewBillPage: React.FC = () => {
             <button 
               type="button" 
               className="btn btn-secondary" 
-              onClick={() => navigate('/bills')}
+              onClick={() => navigate('/resolutions')}
               disabled={loading}
             >
               Cancel
@@ -213,7 +166,7 @@ const NewBillPage: React.FC = () => {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
-              {loading ? 'Submitting...' : 'Submit Bill'}
+              {loading ? 'Submitting...' : 'Submit Resolution'}
             </button>
           </div>
         </form>
@@ -222,4 +175,4 @@ const NewBillPage: React.FC = () => {
   );
 };
 
-export default NewBillPage;
+export default NewResolutionPage;

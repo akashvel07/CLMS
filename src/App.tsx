@@ -9,6 +9,8 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import ConstitutionPage from './pages/constitution/ConstitutionPage';
 import BillsPage from './pages/bills/BillsPage';
 import NewBillPage from './pages/bills/NewBillPage';
+import ResolutionsPage from './pages/resolutions/ResolutionsPage';
+import NewResolutionPage from './pages/resolutions/NewResolutionPage';
 import ParliamentPage from './pages/parliament/ParliamentPage';
 import PresidentPage from './pages/president/PresidentPage';
 import RequestsPage from './pages/requests/RequestsPage';
@@ -46,6 +48,8 @@ function App() {
             <Route path="/constitution" element={<ConstitutionPage />} />
             <Route path="/bills" element={<BillsPage />} />
             <Route path="/bills/new" element={<NewBillPage />} />
+            <Route path="/resolutions" element={<ResolutionsPage />} />
+            <Route path="/resolutions/new" element={<NewResolutionPage />} />
             <Route path="/parliament" element={<ParliamentPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/budget" element={<GlobalBudgetPage />} />

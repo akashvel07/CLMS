@@ -23,6 +23,19 @@ export interface BillItem {
   created_at: string;
 }
 
+export interface ResolutionItem {
+  id: string;
+  resolution_number: string;
+  title: string;
+  description: string;
+  status: BillStatus;
+  ministry: string;
+  ministry_code: string;
+  created_by_name: string;
+  created_at: string;
+}
+
+
 export interface RequestItem {
   id: string;
   from: string;   // from_ministry_name
@@ -87,6 +100,8 @@ export const initRealtimeSync = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'supreme_court_cases' }, notifyListeners)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'supreme_court_orders' }, notifyListeners)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'news_feed' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'resolutions' }, notifyListeners)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'resolution_votes' }, notifyListeners)
     .subscribe();
 };
 
@@ -142,6 +157,18 @@ async function generateLawNumber(): Promise<string> {
   return `LAW-${year}-${seq}`;
 }
 
+async function generateResolutionNumber(ministryCode: string): Promise<string> {
+  const prefix = MINISTRY_PREFIX[ministryCode] ?? 'GR';
+  const year = new Date().getFullYear();
+  const { count } = await db
+    .from('resolutions')
+    .select('*', { count: 'exact', head: true })
+    .eq('ministry_code', ministryCode);
+  const seq = String((count ?? 0) + 1).padStart(3, '0');
+  return `RES-${prefix}-${year}-${seq}`;
+}
+
+
 // ─── Row → Domain Type Mappers ───────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,6 +185,20 @@ const rowToBill = (row: any): BillItem => ({
   created_by_name: row.created_by_name ?? '',
   created_at: row.created_at,
 });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToResolution = (row: any): ResolutionItem => ({
+  id: row.id,
+  resolution_number: row.resolution_number,
+  title: row.title,
+  description: row.description ?? '',
+  status: row.status as BillStatus,
+  ministry: MINISTRY_CODE_TO_LABEL[row.ministry_code] ?? row.ministry_code,
+  ministry_code: row.ministry_code,
+  created_by_name: row.created_by_name ?? '',
+  created_at: row.created_at,
+});
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rowToRequest = (row: any): RequestItem => ({
@@ -269,6 +310,55 @@ export const DataStore = {
     }
     notifyListeners();
   },
+
+  // ─── RESOLUTIONS ──────────────────────────────────────────────────────────
+
+  getResolutions: async (): Promise<ResolutionItem[]> => {
+    const { data, error } = await db
+      .from('resolutions')
+      .select('*')
+      .not('status', 'in', '("deleted","archived")')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[DataStore] getResolutions error:', error); return []; }
+    return (data ?? []).map(rowToResolution);
+  },
+
+  addResolution: async (res: {
+    title: string;
+    description: string;
+    ministry_code: string;
+    created_by_name: string;
+  }): Promise<ResolutionItem | null> => {
+    const resolution_number = await generateResolutionNumber(res.ministry_code);
+    const { data, error } = await db
+      .from('resolutions')
+      .insert({
+        resolution_number,
+        title: res.title,
+        description: res.description,
+        ministry_code: res.ministry_code,
+        created_by_name: res.created_by_name,
+        status: 'draft',
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('[DataStore] addResolution error:', error);
+      throw new Error(error.message || 'Database insert failed');
+    }
+    notifyListeners();
+    return rowToResolution(data);
+  },
+
+  updateResolutionStatus: async (resolutionId: string, status: BillStatus): Promise<void> => {
+    const { error } = await db
+      .from('resolutions')
+      .update({ status })
+      .eq('id', resolutionId);
+    if (error) { console.error('[DataStore] updateResolutionStatus error:', error); return; }
+    notifyListeners();
+  },
+
 
   // ─── LAWS ─────────────────────────────────────────────────────────────────
 

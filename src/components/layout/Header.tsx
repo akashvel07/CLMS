@@ -9,6 +9,8 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
   '/constitution': ['Home', 'Constitution'],
   '/bills': ['Home', 'Bills'],
   '/bills/new': ['Home', 'Bills', 'New Bill'],
+  '/resolutions': ['Home', 'Resolutions'],
+  '/resolutions/new': ['Home', 'Resolutions', 'New Resolution'],
   '/parliament': ['Home', 'Parliament'],
   '/president': ['Home', 'President'],
   '/ministries/health': ['Home', 'Ministries', 'Health'],

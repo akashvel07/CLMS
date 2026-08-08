@@ -13,6 +13,19 @@ export type BillStatus =
   | 'archived'
   | 'deleted';
 
+export type ResolutionStatus =
+  | 'draft'
+  | 'submitted'
+  | 'voting'
+  | 'passed'
+  | 'rejected'
+  | 'suspended'
+  | 'awaiting_president'
+  | 'approved'
+  | 'enacted'
+  | 'archived'
+  | 'deleted';
+
 export type MinistryCode =
   | 'health'
   | 'education'
@@ -98,6 +111,40 @@ export interface MinistryReview {
   ministry_id: string;
   decision: 'approve' | 'suspend' | 'reject';
   reason: string;
+  created_at: string;
+  ministry?: Ministry;
+}
+
+export interface Resolution {
+  id: string;
+  resolution_number: string;
+  title: string;
+  description: string;
+  status: ResolutionStatus;
+  created_by: string;
+  ministry_id: string;
+  created_at: string;
+  updated_at: string;
+  ministry?: Ministry;
+  creator?: UserProfile;
+}
+
+export interface ResolutionVote {
+  id: string;
+  resolution_id: string;
+  user_id: string;
+  vote: VoteChoice;
+  timestamp: string;
+  voter?: UserProfile;
+}
+
+export interface ResolutionReview {
+  id: string;
+  resolution_id: string;
+  ministry_id: string;
+  decision: 'approve' | 'suspend' | 'reject';
+  reason: string;
+
   created_at: string;
   ministry?: Ministry;
 }

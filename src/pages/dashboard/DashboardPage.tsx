@@ -225,10 +225,10 @@ const DashboardPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {[
-              { label: 'Create New Bill', icon: FileText, path: '/bills/new', color: 'btn-primary', show: role !== 'public' },
+              { label: 'Create New Bill', icon: FileText, path: '/bills/new', color: 'btn-primary', show: role !== 'public' && role !== 'justice' && role !== 'chief_justice' },
               { label: 'View Parliament', icon: Vote, path: '/parliament', color: 'btn-secondary', show: true },
               { label: 'Constitution Table', icon: BookOpen, path: '/constitution', color: 'btn-secondary', show: true },
-              { label: 'Submit Request', icon: MessageSquare, path: '/requests', color: 'btn-secondary', show: role !== 'public' },
+              { label: 'Submit Request', icon: MessageSquare, path: '/requests', color: 'btn-secondary', show: role !== 'public' && role !== 'justice' && role !== 'chief_justice' },
               { label: 'Presidential Controls', icon: Crown, path: '/president', color: 'btn-secondary', show: role === 'president' },
             ]
               .filter(a => a.show)

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { DataStore, initRealtimeSync, subscribeDataStore } from '../lib/dataStore';
-import type { BillItem, RequestItem, VoteItem, LawItem } from '../lib/dataStore';
+import type { BillItem, RequestItem, VoteItem, LawItem, ResolutionItem } from '../lib/dataStore';
 
 // Initialize realtime sync once when the app loads
 initRealtimeSync();
@@ -30,6 +30,28 @@ export function useBills() {
 
   return { bills, loading, refetch: fetchBills };
 }
+
+// ─── Resolutions ─────────────────────────────────────────────────────────────
+
+export function useResolutions() {
+  const [resolutions, setResolutions] = useState<ResolutionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchResolutions = useCallback(async () => {
+    const data = await DataStore.getResolutions();
+    setResolutions(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchResolutions();
+    const unsub = subscribeDataStore(fetchResolutions);
+    return unsub;
+  }, [fetchResolutions]);
+
+  return { resolutions, loading, refetch: fetchResolutions };
+}
+
 
 // ─── Votes ───────────────────────────────────────────────────────────────────
 

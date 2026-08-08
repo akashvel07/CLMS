@@ -72,10 +72,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, mobileOpen, onToggle }) =>
             <BookOpen className="nav-icon" size={18} />
             <span className="nav-label">Constitution</span>
           </NavLink>
-          <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/bills">
-            <FileText className="nav-icon" size={18} />
-            <span className="nav-label">Bills</span>
-          </NavLink>
+          {role !== 'justice' && role !== 'chief_justice' && (
+            <>
+              <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/bills">
+                <FileText className="nav-icon" size={18} />
+                <span className="nav-label">Bills</span>
+              </NavLink>
+              <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/resolutions">
+                <FileText className="nav-icon" size={18} />
+                <span className="nav-label">Resolutions</span>
+              </NavLink>
+            </>
+          )}
           <NavLink className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} to="/parliament">
             <Vote className="nav-icon" size={18} />
             <span className="nav-label">Parliament</span>

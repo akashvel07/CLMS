@@ -14,6 +14,7 @@ const MINISTRY_NAME_MAP: Record<string, string> = {
   entertainment: 'Entertainment',
   personal_dev: 'Personal Dev',
   external_affairs: 'External Affairs',
+  transport_road: 'Road & Transport',
 };
 
 const RequestsPage: React.FC = () => {
@@ -155,7 +156,7 @@ const RequestsPage: React.FC = () => {
                   onChange={e => setForm({ ...form, from: e.target.value })}
                   disabled={isMinistryUser}
                 >
-                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs'].map(m => (
+                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs', 'Road & Transport'].map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -163,7 +164,7 @@ const RequestsPage: React.FC = () => {
               <div className="form-group">
                 <label className="form-label">Target Ministry <span className="required">*</span></label>
                 <select className="form-select" value={form.to} onChange={e => setForm({ ...form, to: e.target.value })}>
-                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs'].map(m => (
+                  {['Health', 'Education', 'Finance', 'IT', 'Career', 'Entertainment', 'Personal Dev', 'External Affairs', 'Road & Transport'].map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>

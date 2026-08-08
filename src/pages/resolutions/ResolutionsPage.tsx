@@ -3,19 +3,19 @@ import { FileText, Plus, Search, ChevronRight, Check, X, Pause, Send, Loader2 } 
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import type { BillStatus } from '../../types/database';
+import type { ResolutionStatus } from '../../types/database';
 import { DataStore } from '../../lib/dataStore';
-import { useBills, useVotes } from '../../hooks/useSupabaseData';
+import { useResolutions, useVotes } from '../../hooks/useSupabaseData';
 
 const WORKFLOW_STEPS = ['Draft', 'Voting', 'Passed', 'Awaiting President', 'Approved'];
-const STATUS_STEP: Record<BillStatus, number> = {
+const STATUS_STEP: Record<ResolutionStatus, number> = {
   draft: 0, submitted: 1, voting: 1, passed: 2, rejected: 2,
   suspended: 2, awaiting_president: 3, approved: 4, enacted: 4, archived: 4, deleted: -1,
 };
 
-const BillsPage: React.FC = () => {
+const ResolutionsPage: React.FC = () => {
   const { role, user } = useAuth();
-  const { bills, loading } = useBills();
+  const { resolutions, loading } = useResolutions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -26,19 +26,19 @@ const BillsPage: React.FC = () => {
     DataStore.getLaws().then(setLaws);
   }, []);
 
-  const selected = bills.find(b => b.id === selectedId) || null;
-  const { votes: billVotes } = useVotes(selected?.id);
+  const selected = resolutions.find(b => b.id === selectedId) || null;
+  const { votes: resolutionVotes } = useVotes(selected?.id);
 
-  const filtered = bills.filter(b => {
-    const ms = !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.bill_number.toLowerCase().includes(search.toLowerCase());
+  const filtered = resolutions.filter(b => {
+    const ms = !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.resolution_number.toLowerCase().includes(search.toLowerCase());
     const mst = statusFilter === 'all' || b.status === statusFilter;
     return ms && mst;
   });
 
-  const handleAction = async (status: BillStatus) => {
+  const handleAction = async (status: ResolutionStatus) => {
     if (!selected || updating) return;
     setUpdating(true);
-    await DataStore.updateBillStatus(selected.id, status);
+    await DataStore.updateResolutionStatus(selected.id, status);
     setUpdating(false);
   };
 
@@ -46,16 +46,16 @@ const BillsPage: React.FC = () => {
     if (!selected || updating) return;
     setUpdating(true);
     
-    const votesForBill = billVotes.filter(v => v.bill_id === selected.id);
-    const approveCount = votesForBill.filter(v => v.vote === 'approve').length;
-    const rejectCount = votesForBill.filter(v => v.vote === 'reject').length;
+    const votesForResolution = resolutionVotes.filter(v => v.resolution_id === selected.id);
+    const approveCount = votesForResolution.filter(v => v.vote === 'approve').length;
+    const rejectCount = votesForResolution.filter(v => v.vote === 'reject').length;
     const total = approveCount + rejectCount;
     
     // Tally rules: 60% positive of cast Approve/Reject votes
     const positivePercent = total > 0 ? approveCount / total : 0;
     const passed = positivePercent >= 0.6;
     
-    await DataStore.updateBillStatus(selected.id, passed ? 'passed' : 'rejected');
+    await DataStore.updateResolutionStatus(selected.id, passed ? 'passed' : 'rejected');
     setUpdating(false);
   };
 
@@ -66,28 +66,28 @@ const BillsPage: React.FC = () => {
           <div className="page-title">
             <div className="icon"><FileText size={20} color="var(--accent-primary)" /></div>
             <div>
-              <h1>Bills</h1>
-              <p>Manage and track legislative bills through the governance workflow</p>
+              <h1>Resolutions</h1>
+              <p>Manage and track legislative resolutions through the governance workflow</p>
             </div>
           </div>
           {role !== 'public' && role !== 'justice' && role !== 'chief_justice' && (
-            <Link to="/bills/new" className="btn btn-primary">
-              <Plus size={16} /> Create Bill
+            <Link to="/resolutions/new" className="btn btn-primary">
+              <Plus size={16} /> Create Resolution
             </Link>
           )}
         </div>
       </div>
 
       <div className={`layout-split ${selected ? 'active' : ''}`}>
-        {/* Bills Table */}
+        {/* Resolutions Table */}
         <div className="table-container">
           <div className="table-toolbar">
             <div className="table-search" style={{ flex: 1 }}>
               <Search size={15} color="var(--text-muted)" />
-              <input placeholder="Search bills..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input placeholder="Search resolutions..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="all">All Statuses ({bills.length})</option>
+              <option value="all">All Statuses ({resolutions.length})</option>
               {['draft','submitted','voting','passed','rejected','suspended','awaiting_president','approved','enacted'].map(s => (
                 <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
               ))}
@@ -97,7 +97,7 @@ const BillsPage: React.FC = () => {
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-12)', gap: 'var(--space-3)', color: 'var(--text-muted)' }}>
               <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-              Loading bills from database...
+              Loading resolutions from database...
             </div>
           ) : (
             <>
@@ -106,7 +106,7 @@ const BillsPage: React.FC = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th>Bill No.</th>
+                      <th>Resolution No.</th>
                       <th>Title</th>
                       <th>Ministry</th>
                       <th>Status</th>
@@ -119,27 +119,25 @@ const BillsPage: React.FC = () => {
                       <tr>
                         <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-muted)' }}>
                           <FileText size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                          <div>No bills found. {role !== 'public' && role !== 'justice' && role !== 'chief_justice' && <Link to="/bills/new" style={{ color: 'var(--accent-primary)' }}>Create the first bill →</Link>}</div>
+                          <div>No resolutions found. {role !== 'public' && role !== 'justice' && role !== 'chief_justice' && <Link to="/resolutions/new" style={{ color: 'var(--accent-primary)' }}>Create the first resolution →</Link>}</div>
                         </td>
                       </tr>
-                    ) : filtered.map(bill => (
+                    ) : filtered.map(resolution => (
                       <tr
-                        key={bill.id}
-                        onClick={() => setSelectedId(selectedId === bill.id ? null : bill.id)}
-                        style={{ cursor: 'pointer', background: selectedId === bill.id ? 'var(--bg-glass)' : undefined }}
+                        key={resolution.id}
+                        onClick={() => setSelectedId(selectedId === resolution.id ? null : resolution.id)}
+                        style={{ cursor: 'pointer', background: selectedId === resolution.id ? 'var(--bg-glass)' : undefined }}
                       >
-                        <td><span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span></td>
+                        <td><span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{resolution.resolution_number}</span></td>
                         <td className="text-strong" style={{ maxWidth: 200 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span className="truncate" style={{ display: 'block' }}>{bill.title}</span>
-                            {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
-                            {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
+                            <span className="truncate" style={{ display: 'block' }}>{resolution.title}</span>
                           </div>
                         </td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</td>
-                        <td><span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span></td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{resolution.ministry}</td>
+                        <td><span className={`badge badge-${resolution.status}`}>{resolution.status.replace(/_/g, ' ')}</span></td>
                         <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {bill.created_at ? format(new Date(bill.created_at), 'MMM dd') : 'Today'}
+                          {resolution.created_at ? format(new Date(resolution.created_at), 'MMM dd') : 'Today'}
                         </td>
                         <td><ChevronRight size={14} color="var(--text-muted)" /></td>
                       </tr>
@@ -153,28 +151,26 @@ const BillsPage: React.FC = () => {
                 {filtered.length === 0 ? (
                   <div className="empty-state">
                     <FileText size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-                    <div>No bills found. {role !== 'public' && role !== 'justice' && role !== 'chief_justice' && <Link to="/bills/new" style={{ color: 'var(--accent-primary)' }}>Create the first bill →</Link>}</div>
+                    <div>No resolutions found. {role !== 'public' && role !== 'justice' && role !== 'chief_justice' && <Link to="/resolutions/new" style={{ color: 'var(--accent-primary)' }}>Create the first resolution →</Link>}</div>
                   </div>
-                ) : filtered.map(bill => (
+                ) : filtered.map(resolution => (
                   <div
-                    key={bill.id}
+                    key={resolution.id}
                     className="card"
-                    onClick={() => setSelectedId(selectedId === bill.id ? null : bill.id)}
-                    style={{ cursor: 'pointer', padding: 'var(--space-4)', border: selectedId === bill.id ? '1px solid var(--accent-primary)' : undefined }}
+                    onClick={() => setSelectedId(selectedId === resolution.id ? null : resolution.id)}
+                    style={{ cursor: 'pointer', padding: 'var(--space-4)', border: selectedId === resolution.id ? '1px solid var(--accent-primary)' : undefined }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                      <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{bill.bill_number}</span>
-                      <span className={`badge badge-${bill.status}`}>{bill.status.replace(/_/g, ' ')}</span>
+                      <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>{resolution.resolution_number}</span>
+                      <span className={`badge badge-${resolution.status}`}>{resolution.status.replace(/_/g, ' ')}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{bill.title}</h4>
-                      {bill.type === 'repeal' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-rejected)', borderRadius: 4, fontWeight: 700 }}>REPEAL</span>}
-                      {bill.type === 'suspend' && <span style={{ fontSize: '0.65rem', padding: '2px 4px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--status-suspended)', borderRadius: 4, fontWeight: 700 }}>SUSPEND</span>}
+                      <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{resolution.title}</h4>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bill.ministry}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{resolution.ministry}</span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {bill.created_at ? format(new Date(bill.created_at), 'MMM dd') : 'Today'}
+                        {resolution.created_at ? format(new Date(resolution.created_at), 'MMM dd') : 'Today'}
                       </span>
                     </div>
                   </div>
@@ -184,7 +180,7 @@ const BillsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Bill Detail Panel */}
+        {/* Resolution Detail Panel */}
         {selected && (
           <div className="card" style={{ height: 'fit-content', position: 'sticky', top: 'calc(var(--header-height) + var(--space-8))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-4)' }}>
@@ -196,12 +192,10 @@ const BillsPage: React.FC = () => {
 
             <div className="grid-2" style={{ gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
               {[
-                { label: 'Bill Number', value: selected.bill_number },
+                { label: 'Resolution Number', value: selected.resolution_number },
                 { label: 'Ministry', value: selected.ministry },
                 { label: 'Created By', value: selected.created_by_name || '—' },
                 { label: 'Created', value: selected.created_at ? format(new Date(selected.created_at), 'MMM dd, yyyy') : 'Today' },
-                { label: 'Type', value: selected.type === 'repeal' ? 'Repeal Law' : selected.type === 'suspend' ? 'Suspend Law' : 'New Law' },
-                ...(selected.target_law_id ? [{ label: 'Target Law', value: laws.find(l => l.id === selected.target_law_id)?.law_number || selected.target_law_id }] : []),
               ].map(f => (
                 <div key={f.label}>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{f.label}</div>
@@ -260,8 +254,8 @@ const BillsPage: React.FC = () => {
                     <div style={{ background: 'var(--bg-elevated)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', marginBottom: 4 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Drafter Parliament Action</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                        Current votes: <strong>{billVotes.filter(v => v.vote === 'approve').length} Approve</strong>, <strong>{billVotes.filter(v => v.vote === 'reject').length} Reject</strong>.
-                        {billVotes.length > 0 ? ` Ratio: ${Math.round((billVotes.filter(v => v.vote === 'approve').length / (billVotes.filter(v => v.vote === 'approve').length + billVotes.filter(v => v.vote === 'reject').length || 1)) * 100)}% positive.` : ' No votes cast yet.'}
+                        Current votes: <strong>{resolutionVotes.filter(v => v.vote === 'approve').length} Approve</strong>, <strong>{resolutionVotes.filter(v => v.vote === 'reject').length} Reject</strong>.
+                        {resolutionVotes.length > 0 ? ` Ratio: ${Math.round((resolutionVotes.filter(v => v.vote === 'approve').length / (resolutionVotes.filter(v => v.vote === 'approve').length + resolutionVotes.filter(v => v.vote === 'reject').length || 1)) * 100)}% positive.` : ' No votes cast yet.'}
                       </div>
                       <button className="btn btn-warning btn-sm" style={{ width: '100%' }} onClick={handleCloseVoting} disabled={updating}>
                         Close Voting & Tally Results
@@ -283,10 +277,10 @@ const BillsPage: React.FC = () => {
                   {(selected.status === 'draft' || selected.status === 'voting') && (
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                       <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => handleAction('rejected')} disabled={updating}>
-                        <X size={13} /> Reject Bill
+                        <X size={13} /> Reject Resolution
                       </button>
                       <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => handleAction('suspended')} disabled={updating}>
-                        <Pause size={13} /> Suspend Bill
+                        <Pause size={13} /> Suspend Resolution
                       </button>
                     </div>
                   )}
@@ -325,8 +319,8 @@ const BillsPage: React.FC = () => {
                   {selected.status === 'passed' && "Voting passed. Waiting for drafter to submit for presidential approval."}
                   {selected.status === 'awaiting_president' && "Waiting for Presidential decision (Approve / Reject / Hold)."}
                   {selected.status === 'approved' && "Approved and enacted as a Law in the Constitution."}
-                  {selected.status === 'rejected' && "This bill has been rejected."}
-                  {selected.status === 'suspended' && "This bill has been suspended (placed on hold)."}
+                  {selected.status === 'rejected' && "This resolution has been rejected."}
+                  {selected.status === 'suspended' && "This resolution has been suspended (placed on hold)."}
                 </div>
               )}
             </div>
@@ -337,4 +331,4 @@ const BillsPage: React.FC = () => {
   );
 };
 
-export default BillsPage;
+export default ResolutionsPage;

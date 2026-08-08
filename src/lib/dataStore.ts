@@ -58,6 +58,15 @@ export interface VoteItem {
   timestamp: string;
 }
 
+export interface ResolutionVoteItem {
+  id: string;
+  resolution_id: string;
+  user_name: string;   
+  role: Role;          
+  vote: 'approve' | 'reject' | 'abstain';
+  timestamp: string;
+}
+
 export interface LawItem {
   id: string;
   law_number: string;
@@ -221,6 +230,16 @@ const rowToVote = (row: any): VoteItem => ({
   user_name: row.voted_by_name,
   role: row.voted_by_role as Role,
   vote: row.vote as VoteItem['vote'],
+  timestamp: row.timestamp,
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowToResolutionVote = (row: any): ResolutionVoteItem => ({
+  id: row.id,
+  resolution_id: row.resolution_id,
+  user_name: row.voted_by_name,
+  role: row.voted_by_role as Role,
+  vote: row.vote as ResolutionVoteItem['vote'],
   timestamp: row.timestamp,
 });
 
@@ -482,6 +501,36 @@ export const DataStore = {
         { onConflict: 'bill_id,voted_by_name' }
       );
     if (error) console.error('[DataStore] castVote error:', error);
+    notifyListeners();
+  },
+
+  getResolutionVotes: async (resolutionId?: string): Promise<ResolutionVoteItem[]> => {
+    let query = db.from('resolution_votes').select('*').order('timestamp', { ascending: false });
+    if (resolutionId) query = query.eq('resolution_id', resolutionId);
+    const { data, error } = await query;
+    if (error) { console.error('[DataStore] getResolutionVotes error:', error); return []; }
+    return (data ?? []).map(rowToResolutionVote);
+  },
+
+  castResolutionVote: async (
+    resolutionId: string,
+    userName: string,
+    role: Role,
+    vote: 'approve' | 'reject' | 'abstain'
+  ): Promise<void> => {
+    const { error } = await db
+      .from('resolution_votes')
+      .upsert(
+        {
+          resolution_id: resolutionId,
+          voted_by_name: userName,
+          voted_by_role: role,
+          vote,
+          timestamp: new Date().toISOString(),
+        },
+        { onConflict: 'resolution_id,voted_by_name' }
+      );
+    if (error) console.error('[DataStore] castResolutionVote error:', error);
     notifyListeners();
   },
 

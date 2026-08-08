@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import type { ResolutionStatus } from '../../types/database';
 import { DataStore } from '../../lib/dataStore';
-import { useResolutions, useVotes } from '../../hooks/useSupabaseData';
+import { useResolutions, useResolutionVotes } from '../../hooks/useSupabaseData';
 
 const WORKFLOW_STEPS = ['Draft', 'Voting', 'Passed', 'Awaiting President', 'Approved'];
 const STATUS_STEP: Record<ResolutionStatus, number> = {
@@ -27,7 +27,7 @@ const ResolutionsPage: React.FC = () => {
   }, []);
 
   const selected = resolutions.find(b => b.id === selectedId) || null;
-  const { votes: resolutionVotes } = useVotes(selected?.id);
+  const { votes: resolutionVotes } = useResolutionVotes(selected?.id);
 
   const filtered = resolutions.filter(b => {
     const ms = !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.resolution_number.toLowerCase().includes(search.toLowerCase());

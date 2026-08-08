@@ -36,6 +36,12 @@ const NewResolutionPage: React.FC = () => {
     ministry_code: user.ministry_id || 'health',
   });
 
+  useEffect(() => {
+    if (user.ministry_id) {
+      setForm(f => ({ ...f, ministry_code: user.ministry_id! }));
+    }
+  }, [user.ministry_id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.description.trim()) {

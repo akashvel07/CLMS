@@ -38,6 +38,12 @@ const NewBillPage: React.FC = () => {
     target_law_id: '',
   });
 
+  useEffect(() => {
+    if (user.ministry_id) {
+      setForm(f => ({ ...f, ministry_code: user.ministry_id! }));
+    }
+  }, [user.ministry_id]);
+
   const [laws, setLaws] = useState<LawItem[]>([]);
   useEffect(() => {
     DataStore.getLaws().then(data => setLaws(data.filter(l => l.status === 'active')));

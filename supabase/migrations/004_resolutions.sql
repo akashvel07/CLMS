@@ -3,6 +3,11 @@
 -- ═══════════════════════════════════════════════════════════════
 
 -- ─── RESOLUTIONS ──────────────────────────────────────────────────────
+DROP TABLE IF EXISTS resolutions CASCADE;
+DROP TABLE IF EXISTS resolution_votes CASCADE;
+DROP TABLE IF EXISTS resolution_reviews CASCADE;
+DROP TRIGGER IF EXISTS resolutions_updated_at ON resolutions;
+
 CREATE TABLE IF NOT EXISTS resolutions (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   resolution_number TEXT NOT NULL UNIQUE,
